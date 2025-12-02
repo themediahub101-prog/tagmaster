@@ -3,98 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <!-- Prevent iOS styling phone numbers -->
+    <!-- 防止 iOS 自動偵測電話號碼影響樣式 -->
     <meta name="format-detection" content="telephone=no">
-    <title>TagMaster v6.4</title>
+    <title>TagMaster Local v7.0</title>
     
-    <!-- 1. Standard Favicon (SVG Data URI for Browser Tabs) -->
+    <!-- FAVICON & APPLE TOUCH ICON GENERATOR -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23F97316'/><path d='M30 35h40M30 55h40M30 75h25' stroke='white' stroke-width='8' stroke-linecap='round'/></svg>">
-
-    <!-- 2. Dynamic Apple Touch Icon Script -->
     <script>
         (function() {
             try {
-                // 創建 180x180 Canvas (iOS 標準尺寸)
-                var canvas = document.createElement('canvas');
-                canvas.width = 180;
-                canvas.height = 180;
-                var ctx = canvas.getContext('2d');
-
-                // A. 繪製背景 (橙色) - iOS 會自動裁切圓角，所以這裡畫正方形即可
-                ctx.fillStyle = '#F97316'; // Tailwind Orange-500
-                ctx.fillRect(0, 0, 180, 180);
-
-                // B. 繪製筆記圖示 (白色線條)
-                ctx.strokeStyle = '#FFFFFF';
-                ctx.lineWidth = 14;
-                ctx.lineCap = 'round';
-
-                // 線條 1
-                ctx.beginPath();
-                ctx.moveTo(50, 60);
-                ctx.lineTo(130, 60);
-                ctx.stroke();
-
-                // 線條 2
-                ctx.beginPath();
-                ctx.moveTo(50, 90);
-                ctx.lineTo(130, 90);
-                ctx.stroke();
-
-                // 線條 3 (較短)
-                ctx.beginPath();
-                ctx.moveTo(50, 120);
-                ctx.lineTo(90, 120);
-                ctx.stroke();
-
-                // C. 轉換為 PNG 並插入 Head
-                var link = document.createElement('link');
-                link.rel = 'apple-touch-icon';
-                link.href = canvas.toDataURL('image/png');
-                document.head.appendChild(link);
-            } catch (e) {
-                console.error('Icon generation failed', e);
-            }
+                // 動態繪製 Apple Touch Icon (橙色底 + 白色筆記)
+                var c = document.createElement('canvas'); c.width=180; c.height=180; var x = c.getContext('2d');
+                x.fillStyle='#F97316'; x.fillRect(0,0,180,180);
+                x.strokeStyle='#FFFFFF'; x.lineWidth=14; x.lineCap='round';
+                x.beginPath(); x.moveTo(50,60); x.lineTo(130,60); x.stroke();
+                x.beginPath(); x.moveTo(50,90); x.lineTo(130,90); x.stroke();
+                x.beginPath(); x.moveTo(50,120); x.lineTo(90,120); x.stroke();
+                var l = document.createElement('link'); l.rel='apple-touch-icon'; l.href=c.toDataURL('image/png'); document.head.appendChild(l);
+            } catch(e){}
         })();
     </script>
 
-    <!-- 3. Tailwind CSS -->
+    <!-- LIBRARIES -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        notion: {
-                            bg: '#FFFFFF',
-                            sidebar: '#F7F7F5',
-                            hover: '#EFEFEF',
-                            text: '#37352F',
-                            dim: '#9B9A97',
-                            border: '#E9E9E7',
-                            blue: '#2383E2',
-                            red: '#E03E3E',
-                            yellow: '#FAEB8F'
-                        }
+                        notion: { bg: '#FFFFFF', sidebar: '#F7F7F5', hover: '#EFEFEF', text: '#37352F', dim: '#9B9A97', border: '#E9E9E7', blue: '#2383E2', red: '#E03E3E', yellow: '#FAEB8F' }
                     }
                 }
             }
         }
     </script>
-
-    <!-- 4. Vue 3 -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-
-    <!-- 5. Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-
-    <!-- 6. SortableJS -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 
     <style>
         body { -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
         
-        /* Scrollbar Styling */
+        /* 自定義捲軸 */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
@@ -102,22 +52,9 @@
         
         [contenteditable]:focus { outline: none; }
         
-        /* Modal Editor Style */
-        .modal-editor {
-            min-height: 300px;
-            max-height: 60vh;
-            overflow-y: auto;
-            line-height: 1.7;
-            font-size: 1.05rem;
-        }
-        .modal-editor:empty:before {
-            content: attr(data-placeholder);
-            color: #9B9A97;
-            pointer-events: none;
-            display: block;
-        }
-
-        /* Rich Text Styles */
+        /* 編輯器樣式 */
+        .modal-editor { min-height: 300px; max-height: 60vh; overflow-y: auto; line-height: 1.7; font-size: 1.05rem; }
+        .modal-editor:empty:before { content: attr(data-placeholder); color: #9B9A97; pointer-events: none; display: block; }
         .modal-editor ul { list-style-type: disc; margin-left: 1.5em; }
         .modal-editor ol { list-style-type: decimal; margin-left: 1.5em; }
         .modal-editor h1 { font-size: 1.8em; font-weight: 700; margin-top: 0.8em; margin-bottom: 0.4em; }
@@ -125,39 +62,27 @@
         .modal-editor blockquote { border-left: 3px solid #E0E0E0; padding-left: 1em; color: #666; font-style: italic; }
         .modal-editor span[style*="background-color"] { border-radius: 4px; padding: 0 2px; }
 
-        /* Preview Text Clamp */
-        .preview-text {
-            display: -webkit-box;
-            -webkit-line-clamp: 5;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            word-break: break-word;
-            white-space: pre-wrap;
-            color: #4a4a4a;
-            font-size: 0.875rem;
-            line-height: 1.5;
-        }
-
-        /* Horizontal Scroll Hide */
+        /* 卡片預覽截斷 */
+        .preview-text { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; white-space: pre-wrap; color: #4a4a4a; font-size: 0.875rem; line-height: 1.5; }
+        
+        /* 隱藏橫向捲軸 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        /* Error Animation */
+        
+        /* 錯誤搖晃動畫 */
         .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
 
-        /* ======= iOS DATE INPUT FIX ======= */
-        input[type="date"],
-        input[type="time"],
-        input[type="datetime-local"] {
-            -webkit-appearance: none;
+        /* iOS Safari 日期顯示修復 (核彈級強制設定) */
+        input[type="date"], input[type="time"], input[type="datetime-local"] {
+            -webkit-appearance: none; 
             appearance: none;
-            color: #37352F !important;
+            color: #37352F !important; 
             -webkit-text-fill-color: #37352F !important;
-            opacity: 1 !important;
-            background-color: white;
-            min-height: 36px;
-            padding-top: 6px;
+            opacity: 1 !important; 
+            background-color: white; 
+            min-height: 36px; 
+            padding-top: 6px; 
             padding-bottom: 6px;
         }
     </style>
@@ -166,18 +91,18 @@
 
     <div id="app" class="flex w-full h-full">
         
-        <!-- SIDEBAR -->
+        <!-- ==================== SIDEBAR ==================== -->
         <aside class="fixed inset-y-0 left-0 bg-notion-sidebar border-r border-notion-border flex flex-col transition-all duration-300 z-30 transform md:relative md:translate-x-0"
                :class="{'translate-x-0 w-64 shadow-xl md:shadow-none': sidebarOpen, '-translate-x-full w-64': !sidebarOpen}">
             
             <div class="p-4 flex items-center justify-between font-bold select-none text-notion-text">
                 <div class="flex items-center gap-2">
-                    <!-- Icon in Sidebar -->
                     <div class="w-6 h-6 bg-orange-500 text-white flex items-center justify-center rounded text-xs">
                         <i class="ph-bold ph-note text-sm"></i>
                     </div>
                     <span>TagMaster</span>
                 </div>
+                <!-- Mobile Close Sidebar -->
                 <button @click="sidebarOpen = false" class="md:hidden text-notion-dim p-1"><i class="ph ph-caret-left"></i></button>
             </div>
 
@@ -209,25 +134,43 @@
                 </div>
             </div>
             
-            <div class="p-3 border-t border-gray-200 text-[10px] text-gray-400 flex items-center gap-2">
-                <i class="ph-bold ph-hard-drives"></i> Local Storage Mode
+            <!-- DATA MANAGEMENT FOOTER (Export/Import) -->
+            <div class="p-3 border-t border-gray-200 bg-gray-50/50">
+                <div class="flex items-center gap-1.5 text-[10px] text-gray-400 mb-2 px-1">
+                    <i class="ph-bold ph-hard-drives"></i> Local Storage
+                </div>
+                <div class="flex gap-2">
+                    <!-- Export Button -->
+                    <button @click="exportData" class="flex-1 flex items-center justify-center gap-1 bg-white border border-gray-200 rounded py-1.5 text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm" title="Download Backup">
+                        <i class="ph ph-download-simple"></i> Export
+                    </button>
+                    <!-- Import Button -->
+                    <button @click="$refs.fileInput.click()" class="flex-1 flex items-center justify-center gap-1 bg-white border border-gray-200 rounded py-1.5 text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm" title="Restore Backup">
+                        <i class="ph ph-upload-simple"></i> Import
+                    </button>
+                    <!-- Hidden File Input -->
+                    <input ref="fileInput" type="file" class="hidden" accept=".json" @change="importData">
+                </div>
             </div>
         </aside>
 
+        <!-- Sidebar Overlay for Mobile -->
         <div v-if="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 bg-black/20 z-20 md:hidden"></div>
 
-        <!-- MAIN CONTENT -->
+        <!-- ==================== MAIN CONTENT ==================== -->
         <main class="flex-1 flex flex-col h-full overflow-hidden bg-white relative w-full">
             
+            <!-- Mobile Toggle -->
             <button @click="sidebarOpen = !sidebarOpen" class="absolute top-4 left-4 z-10 text-notion-dim hover:text-notion-text p-1 rounded hover:bg-notion-hover md:hidden">
                 <i class="ph ph-list text-xl"></i>
             </button>
 
+            <!-- Scrollable Area -->
             <div class="flex-1 overflow-y-auto w-full h-full scroll-smooth">
                 
                 <div class="w-full max-w-7xl mx-auto px-4 md:px-12 py-6 md:py-12">
                 
-                    <!-- Header -->
+                    <!-- 1. Header & Search -->
                     <header class="mb-8 mt-2 pl-8 md:pl-0 flex flex-col md:flex-row md:items-end justify-between gap-4">
                         <div class="flex-1">
                             <h1 class="text-3xl md:text-4xl font-bold mb-1 flex items-center gap-2">
@@ -260,10 +203,11 @@
                         </div>
                     </header>
 
-                    <!-- Tasks Section -->
+                    <!-- 2. Tasks Section -->
                     <section class="mb-10">
                         <h2 class="text-xs font-bold text-notion-dim uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Tasks</h2>
                         
+                        <!-- Add Task Input -->
                         <div class="relative group mb-4 bg-white border border-gray-200 rounded-lg p-2 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all shadow-sm"
                              :class="{'border-red-400 ring-2 ring-red-100 shake': taskError}">
                             <div class="flex flex-col md:flex-row gap-2">
@@ -273,10 +217,10 @@
                                 </div>
                                 <div class="flex items-center gap-2 border-t md:border-t-0 md:border-l border-gray-100 pt-2 md:pt-0 md:pl-2">
                                     
-                                    <!-- IOS FIX -->
+                                    <!-- iOS FIX applied -->
                                     <input type="datetime-local" 
                                            v-model="newTaskDue" 
-                                           style="color-scheme: light;" 
+                                           style="color-scheme: light;"
                                            class="flex-1 md:flex-none w-full md:w-auto text-xs text-gray-900 bg-white rounded px-2 outline-none border transition-colors font-mono"
                                            :class="taskError ? 'border-red-500' : 'border-gray-300'">
                                     
@@ -295,6 +239,7 @@
                         <div class="space-y-1">
                             <div v-for="task in filteredTasks" :key="task.id" class="p-2 hover:bg-notion-hover rounded group transition-colors duration-200">
                                 
+                                <!-- VIEW MODE -->
                                 <div v-if="editingId !== task.id" class="flex items-start gap-3">
                                     <button @click="toggleTask(task)" class="mt-0.5 text-gray-400 hover:text-notion-blue transition-colors shrink-0">
                                         <i class="ph text-xl" :class="task.completed ? 'ph-check-square text-notion-blue' : 'ph-square'"></i>
@@ -315,6 +260,7 @@
                                     </div>
                                 </div>
 
+                                <!-- EDIT MODE -->
                                 <div v-else class="flex flex-col gap-2 bg-white border border-blue-200 rounded p-2 shadow-sm">
                                     <input type="text" v-model="editTitle" class="w-full text-sm outline-none border-b border-gray-200 pb-1" placeholder="Task title">
                                     <div class="flex items-center justify-between gap-2">
@@ -335,7 +281,7 @@
                         </div>
                     </section>
 
-                    <!-- Notes Section -->
+                    <!-- 3. Notes Section -->
                     <section>
                         <div class="flex items-center justify-between mb-2">
                             <h2 class="text-xs font-bold text-notion-dim uppercase tracking-wider">Notes</h2>
@@ -344,6 +290,7 @@
                             </button>
                         </div>
 
+                        <!-- Horizontal Tag Filter -->
                         <div class="flex gap-2 overflow-x-auto no-scrollbar py-2 mb-4">
                             <button @click="setFilter(null)" class="whitespace-nowrap px-3 py-1 rounded-full text-xs border transition-colors" :class="activeTag === null ? 'bg-gray-800 text-white border-gray-800' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'">All</button>
                             <button v-for="tag in sortedTags" :key="tag" @click="setFilter(tag)" class="whitespace-nowrap px-3 py-1 rounded-full text-xs border transition-colors" :class="activeTag === tag ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:border-blue-300'">#{{ tag }}</button>
@@ -353,6 +300,7 @@
                             <p class="text-sm text-gray-400">{{ searchQuery ? 'No notes found matching query.' : 'No notes here.' }}</p>
                         </div>
 
+                        <!-- Masonry Layout -->
                         <div class="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4">
                             <div v-for="note in filteredNotes" :key="note.id" @click="openEditor(note)" class="break-inside-avoid bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer transition-all hover:-translate-y-0.5 group flex flex-col relative overflow-hidden">
                                 <div class="mb-3 max-h-32 overflow-hidden relative">
@@ -425,19 +373,20 @@
 
         const app = createApp({
             setup() {
-                // UI State
+                // STATE
                 const sidebarOpen = ref(window.innerWidth > 768);
                 const activeTag = ref(null);
                 const searchQuery = ref('');
                 const tagListRef = ref(null);
+                const fileInput = ref(null);
                 
-                // Data (LocalStorage)
+                // DATA
                 const storedData = JSON.parse(localStorage.getItem('tagmaster-local') || '{"notes":[], "tasks":[], "tagOrder":[]}');
                 const notes = ref(storedData.notes || []);
                 const tasks = ref(storedData.tasks || []);
                 const tagOrder = ref(storedData.tagOrder || []);
                 
-                // Inputs
+                // TASK INPUTS
                 const newTaskInput = ref('');
                 const newTaskDue = ref('');
                 const taskError = ref(false);
@@ -445,7 +394,7 @@
                 const editTitle = ref('');
                 const editDue = ref('');
 
-                // Editor
+                // EDITOR INPUTS
                 const editingNote = ref(null);
                 const originalNoteId = ref(null);
                 const tagInput = ref('');
@@ -455,16 +404,47 @@
                 const timeTrigger = ref(Date.now());
                 const TAG_REGEX = /#[\w\u4e00-\u9fa5]+/g;
 
-                // --- DATA PERSISTENCE ---
-                const saveData = () => {
-                    localStorage.setItem('tagmaster-local', JSON.stringify({
-                        notes: notes.value,
-                        tasks: tasks.value,
-                        tagOrder: tagOrder.value
-                    }));
+                // SAVE
+                const saveData = () => { localStorage.setItem('tagmaster-local', JSON.stringify({ notes: notes.value, tasks: tasks.value, tagOrder: tagOrder.value })); };
+
+                // EXPORT
+                const exportData = () => {
+                    const dataStr = JSON.stringify({ notes: notes.value, tasks: tasks.value, tagOrder: tagOrder.value, exportedAt: new Date().toISOString() }, null, 2);
+                    const blob = new Blob([dataStr], {type: "application/json"});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `tagmaster-backup-${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
                 };
 
-                // --- Helpers ---
+                // IMPORT
+                const importData = (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const json = JSON.parse(e.target.result);
+                            if (Array.isArray(json.notes) && Array.isArray(json.tasks)) {
+                                if(confirm(`Found ${json.notes.length} notes and ${json.tasks.length} tasks. Replace current data?`)) {
+                                    notes.value = json.notes;
+                                    tasks.value = json.tasks;
+                                    tagOrder.value = json.tagOrder || [];
+                                    saveData();
+                                    alert('Import successful!');
+                                }
+                            } else { alert('Invalid backup file format.'); }
+                        } catch (err) { alert('Error parsing file.'); }
+                        event.target.value = '';
+                    };
+                    reader.readAsText(file);
+                };
+
+                // HELPERS
                 const setFilter = (tag) => { activeTag.value = tag; if(window.innerWidth < 768) sidebarOpen.value = false; };
                 const highlightText = (text) => { if (!searchQuery.value) return text; const regex = new RegExp(`(${searchQuery.value})`, 'gi'); return text.replace(regex, '<span class="bg-yellow-200 text-black rounded px-0.5">$1</span>'); };
                 const getPreviewText = (html) => { if (!html) return ''; const tempDiv = document.createElement("div"); tempDiv.innerHTML = html; return tempDiv.textContent || tempDiv.innerText || ""; };
@@ -474,15 +454,14 @@
                 const formatRelativeTime = (d) => { const diff = Date.now() - new Date(d).getTime(); if(diff < 60000) return 'Just now'; if(diff < 86400000) return Math.floor(diff/3600000) + 'h ago'; return formatDateTime(d); };
                 const getDueDateColor = (task) => { if (task.completed) return 'text-gray-400'; return new Date(task.dueDate).getTime() < timeTrigger.value ? 'text-notion-red font-bold' : 'text-gray-400'; };
                 
-                // --- Task Logic ---
+                // LOGIC
                 const detectedTags = computed(() => parseTags(newTaskInput.value));
                 const addTask = () => {
                     if (!newTaskInput.value.trim()) return;
                     if (!newTaskDue.value) { taskError.value = true; setTimeout(() => taskError.value = false, 2000); return; }
                     const cleanTitle = newTaskInput.value.replace(TAG_REGEX, '').replace(/\s+/g, ' ').trim();
                     tasks.value.push({ id: generateId(), title: cleanTitle || "Untitled", completed: false, dueDate: newTaskDue.value, tags: parseTags(newTaskInput.value) });
-                    newTaskInput.value = ''; newTaskDue.value = ''; taskError.value = false;
-                    saveData();
+                    newTaskInput.value = ''; newTaskDue.value = ''; taskError.value = false; saveData();
                 };
                 const startEdit = (t) => { editingId.value = t.id; editTitle.value = t.title; editDue.value = t.dueDate; };
                 const saveEdit = () => { const t = tasks.value.find(x => x.id === editingId.value); if(t && editTitle.value.trim() && editDue.value){ t.title = editTitle.value; t.dueDate = editDue.value; saveData(); } editingId.value = null; };
@@ -490,12 +469,10 @@
                 const toggleTask = (t) => { t.completed = !t.completed; saveData(); };
                 const deleteTask = (id) => { tasks.value = tasks.value.filter(t => t.id !== id); saveData(); };
                 
-                // --- Filters & Sorts ---
                 const sortedTags = computed(() => { const set = new Set(); notes.value.forEach(n => n.tags.forEach(t => set.add(t))); tasks.value.forEach(t => t.tags.forEach(t => set.add(t))); const map = new Map(); tagOrder.value.forEach((t, i) => map.set(t, i)); return Array.from(set).sort((a, b) => { const iA = map.has(a) ? map.get(a) : 9999; const iB = map.has(b) ? map.get(b) : 9999; return iA !== iB ? iA - iB : a.localeCompare(b); }); });
                 const filteredTasks = computed(() => { let res = tasks.value; if (activeTag.value) res = res.filter(t => t.tags.includes(activeTag.value)); if (searchQuery.value) res = res.filter(t => t.title.toLowerCase().includes(searchQuery.value.toLowerCase())); return res.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1)); });
                 const filteredNotes = computed(() => { let res = notes.value; if (activeTag.value) res = res.filter(n => n.tags.includes(activeTag.value)); if (searchQuery.value) { const q = searchQuery.value.toLowerCase(); res = res.filter(n => getPreviewText(n.content).toLowerCase().includes(q) || n.tags.some(t => t.toLowerCase().includes(q))); } return res; });
 
-                // --- Editor ---
                 const openEditor = (n) => { if (n) { originalNoteId.value = n.id; editingNote.value = JSON.parse(JSON.stringify(n)); } else { originalNoteId.value = null; editingNote.value = { id: generateId(), content: '', tags: [], updatedAt: Date.now() }; } tagInput.value = ''; };
                 const closeEditor = () => { if (!editingNote.value) return; if (originalNoteId.value) { const idx = notes.value.findIndex(n => n.id === originalNoteId.value); if (idx !== -1) notes.value[idx] = editingNote.value; } else { if (editingNote.value.content.trim() || editingNote.value.tags.length > 0) notes.value.unshift(editingNote.value); } saveData(); editingNote.value = null; };
                 const onEditorInput = (e) => { editingNote.value.content = e.target.innerHTML; editingNote.value.updatedAt = Date.now(); saveData(); };
@@ -520,7 +497,8 @@
                     editingId, editTitle, editDue, startEdit, saveEdit, cancelEdit,
                     filteredTasks, filteredNotes, formatDateTime, formatRelativeTime, getPreviewText,
                     editingNote, openEditor, closeEditor, onEditorInput, deleteCurrentNote, editorRef, execCmd, wordCount,
-                    tagInput, tagSuggestions, addTag, addSuggestedTag, removeTag, onTagBackspace, tagInputRef
+                    tagInput, tagSuggestions, addTag, addSuggestedTag, removeTag, onTagBackspace, tagInputRef,
+                    exportData, importData, fileInput
                 };
             }
         });
@@ -532,11 +510,5 @@
 
         app.mount('#app');
     </script>
-    <style>
-        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-        .animate-fade-in { animation: fade-in 0.2s ease-out; }
-        @keyframes slide-up { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .animate-slide-up { animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-    </style>
 </body>
 </html>
