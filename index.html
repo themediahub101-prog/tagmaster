@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TagMaster Pro v4.2</title>
+    <title>TagMaster Pro v4.5</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -84,6 +84,10 @@
         /* Horizontal Scroll Hide */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Error Animation */
+        .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
     </style>
 </head>
 <body class="bg-notion-bg text-notion-text h-screen overflow-hidden flex">
@@ -143,7 +147,7 @@
                 <div class="w-full max-w-7xl mx-auto px-4 md:px-12 py-6 md:py-12">
                 
                     <header class="mb-8 mt-2 pl-8 md:pl-0 flex flex-col md:flex-row md:items-end justify-between gap-4">
-                        <div>
+                        <div class="flex-1">
                             <h1 class="text-3xl md:text-4xl font-bold mb-1 flex items-center gap-2">
                                 {{ activeTag ? '#' + activeTag : 'Dashboard' }}
                                 <button v-if="activeTag" @click="setFilter(null)" class="text-xs font-normal text-notion-dim bg-gray-100 px-2 py-1 rounded-full hover:bg-gray-200">
@@ -155,18 +159,15 @@
                             </p>
                         </div>
                         
-                        <div class="relative w-full md:w-72">
+                        <div class="relative w-1/2 md:w-72 self-end">
                             <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
-                            
                             <input 
                                 type="text" 
                                 v-model="searchQuery" 
-                                placeholder="Search..." 
+                                placeholder="Search" 
                                 class="w-full pl-9 pr-10 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
                             >
-                            
                             <div v-if="searchQuery" class="absolute right-9 top-1 bottom-1 w-8 bg-gradient-to-l from-gray-50 to-transparent pointer-events-none z-10"></div>
-
                             <button v-if="searchQuery" 
                                     @click="searchQuery=''" 
                                     class="absolute right-2 top-1/2 -translate-y-1/2 bg-gray-500 hover:bg-gray-600 text-white rounded-full w-5 h-5 flex items-center justify-center transition-colors shadow-sm z-20"
@@ -179,38 +180,64 @@
                     <section class="mb-10">
                         <h2 class="text-xs font-bold text-notion-dim uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Tasks</h2>
                         
-                        <div class="relative group mb-4 bg-white border border-gray-200 rounded-lg p-2 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all shadow-sm">
+                        <div class="relative group mb-4 bg-white border border-gray-200 rounded-lg p-2 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all shadow-sm"
+                             :class="{'border-red-400 ring-2 ring-red-100 shake': taskError}">
                             <div class="flex flex-col md:flex-row gap-2">
                                 <div class="flex items-center gap-2 flex-1">
                                     <i class="ph ph-plus text-gray-400 ml-1"></i>
                                     <input type="text" v-model="newTaskInput" @keyup.enter="addTask" placeholder="Add task... (e.g. Buy milk #home)" class="flex-1 px-1 py-1 outline-none text-sm bg-transparent min-w-0">
                                 </div>
                                 <div class="flex items-center gap-2 border-t md:border-t-0 md:border-l border-gray-100 pt-2 md:pt-0 md:pl-2">
-                                    <input type="datetime-local" v-model="newTaskDue" class="flex-1 md:flex-none text-[11px] text-gray-500 bg-gray-50 rounded px-2 py-1.5 outline-none border border-gray-100 font-mono">
-                                    <button @click="addTask" class="px-4 py-1.5 bg-notion-text text-white rounded-md text-xs font-medium hover:opacity-90 whitespace-nowrap">Add</button>
+                                    <input type="datetime-local" 
+                                           v-model="newTaskDue" 
+                                           class="flex-1 md:flex-none w-full md:w-auto h-9 text-xs text-gray-600 bg-gray-50 rounded px-2 outline-none border transition-colors font-mono"
+                                           :class="taskError ? 'border-red-500 bg-red-50' : 'border-gray-200'">
+                                    
+                                    <button @click="addTask" class="h-9 px-4 bg-notion-text text-white rounded-md text-xs font-medium hover:opacity-90 whitespace-nowrap">Add</button>
                                 </div>
                             </div>
                             <div v-if="detectedTags.length > 0" class="absolute -bottom-6 left-2 flex gap-1">
                                 <span v-for="tag in detectedTags" :key="tag" class="text-[10px] bg-blue-50 text-blue-600 px-1.5 rounded animate-pulse">#{{ tag }} will be added</span>
                             </div>
+                             <div v-if="taskError" class="absolute -bottom-6 right-0 text-[10px] text-red-500 font-bold">
+                                * Due date required
+                            </div>
                         </div>
 
                         <div class="space-y-1">
-                            <div v-for="task in filteredTasks" :key="task.id" class="flex items-start gap-3 p-2 hover:bg-notion-hover rounded group transition-colors duration-200">
-                                <button @click="toggleTask(task)" class="mt-0.5 text-gray-400 hover:text-notion-blue transition-colors shrink-0">
-                                    <i class="ph text-xl" :class="task.completed ? 'ph-check-square text-notion-blue' : 'ph-square'"></i>
-                                </button>
-                                <div class="flex-1 min-w-0">
-                                    <div class="text-sm break-words" :class="{'line-through text-notion-dim': task.completed}">
-                                        <span v-if="searchQuery" v-html="highlightText(task.title)"></span>
-                                        <span v-else>{{ task.title }}</span>
+                            <div v-for="task in filteredTasks" :key="task.id" class="p-2 hover:bg-notion-hover rounded group transition-colors duration-200">
+                                
+                                <div v-if="editingId !== task.id" class="flex items-start gap-3">
+                                    <button @click="toggleTask(task)" class="mt-0.5 text-gray-400 hover:text-notion-blue transition-colors shrink-0">
+                                        <i class="ph text-xl" :class="task.completed ? 'ph-check-square text-notion-blue' : 'ph-square'"></i>
+                                    </button>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-sm break-words" :class="{'line-through text-notion-dim': task.completed}">
+                                            <span v-if="searchQuery" v-html="highlightText(task.title)"></span>
+                                            <span v-else>{{ task.title }}</span>
+                                        </div>
+                                        <div class="flex flex-wrap items-center gap-2 mt-1">
+                                            <span v-for="tag in task.tags" :key="tag" @click.stop="setFilter(tag)" class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded cursor-pointer hover:bg-gray-200">#{{ tag }}</span>
+                                            <span v-if="task.dueDate" class="text-[10px] flex items-center gap-1 font-mono" :class="getDueDateColor(task)"><i class="ph ph-clock"></i> {{ formatDateTime(task.dueDate) }}</span>
+                                        </div>
                                     </div>
-                                    <div class="flex flex-wrap items-center gap-2 mt-1">
-                                        <span v-for="tag in task.tags" :key="tag" @click.stop="setFilter(tag)" class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded cursor-pointer hover:bg-gray-200">#{{ tag }}</span>
-                                        <span v-if="task.dueDate" class="text-[10px] flex items-center gap-1 font-mono" :class="getDueDateColor(task)"><i class="ph ph-clock"></i> {{ formatDateTime(task.dueDate) }}</span>
+                                    <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button @click="startEdit(task)" class="text-gray-400 hover:text-blue-500 p-1" title="Edit"><i class="ph ph-pencil-simple"></i></button>
+                                        <button @click="deleteTask(task.id)" class="text-gray-400 hover:text-red-500 p-1" title="Delete"><i class="ph ph-trash"></i></button>
                                     </div>
                                 </div>
-                                <button @click="deleteTask(task.id)" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 p-1 shrink-0"><i class="ph ph-trash"></i></button>
+
+                                <div v-else class="flex flex-col gap-2 bg-white border border-blue-200 rounded p-2 shadow-sm">
+                                    <input type="text" v-model="editTitle" class="w-full text-sm outline-none border-b border-gray-200 pb-1" placeholder="Task title">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <input type="datetime-local" v-model="editDue" class="flex-1 text-xs text-gray-600 bg-gray-50 rounded px-2 py-1.5 border border-gray-200 h-8">
+                                        <div class="flex gap-2">
+                                            <button @click="saveEdit" class="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 h-8">Save</button>
+                                            <button @click="cancelEdit" class="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 h-8">Cancel</button>
+                                        </div>
+                                    </div>
+                                </div>
+
                             </div>
                             <div v-if="filteredTasks.length === 0 && searchQuery" class="text-sm text-gray-400 italic px-2">No tasks matching search.</div>
                         </div>
@@ -225,17 +252,8 @@
                         </div>
 
                         <div class="flex gap-2 overflow-x-auto no-scrollbar py-2 mb-4">
-                            <button @click="setFilter(null)" 
-                                    class="whitespace-nowrap px-3 py-1 rounded-full text-xs border transition-colors"
-                                    :class="activeTag === null ? 'bg-gray-800 text-white border-gray-800' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'">
-                                All
-                            </button>
-                            <button v-for="tag in sortedTags" :key="tag"
-                                    @click="setFilter(tag)"
-                                    class="whitespace-nowrap px-3 py-1 rounded-full text-xs border transition-colors"
-                                    :class="activeTag === tag ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:border-blue-300'">
-                                #{{ tag }}
-                            </button>
+                            <button @click="setFilter(null)" class="whitespace-nowrap px-3 py-1 rounded-full text-xs border transition-colors" :class="activeTag === null ? 'bg-gray-800 text-white border-gray-800' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'">All</button>
+                            <button v-for="tag in sortedTags" :key="tag" @click="setFilter(tag)" class="whitespace-nowrap px-3 py-1 rounded-full text-xs border transition-colors" :class="activeTag === tag ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:border-blue-300'">#{{ tag }}</button>
                         </div>
 
                         <div v-if="filteredNotes.length === 0" class="text-center py-10 bg-gray-50 rounded-lg border border-dashed border-gray-200">
@@ -243,22 +261,14 @@
                         </div>
 
                         <div class="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4">
-                            <div v-for="note in filteredNotes" :key="note.id" 
-                                 @click="openEditor(note)"
-                                 class="break-inside-avoid bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer transition-all hover:-translate-y-0.5 group flex flex-col relative overflow-hidden">
-                                
+                            <div v-for="note in filteredNotes" :key="note.id" @click="openEditor(note)" class="break-inside-avoid bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer transition-all hover:-translate-y-0.5 group flex flex-col relative overflow-hidden">
                                 <div class="mb-3 max-h-32 overflow-hidden relative">
                                     <div v-if="!note.content" class="text-gray-300 italic text-sm">Empty note...</div>
-                                    <div v-else class="preview-text">
-                                        {{ getPreviewText(note.content) }}
-                                    </div>
+                                    <div v-else class="preview-text">{{ getPreviewText(note.content) }}</div>
                                     <div class="absolute bottom-0 left-0 w-full h-6 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
                                 </div>
-
                                 <div class="flex items-center justify-between pt-2 border-t border-gray-50 mt-auto">
-                                    <div class="flex gap-1 flex-wrap">
-                                        <span v-for="tag in note.tags" :key="tag" class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">#{{ tag }}</span>
-                                    </div>
+                                    <div class="flex gap-1 flex-wrap"><span v-for="tag in note.tags" :key="tag" class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">#{{ tag }}</span></div>
                                     <span class="text-[10px] text-gray-300 whitespace-nowrap ml-2">{{ formatRelativeTime(note.updatedAt) }}</span>
                                 </div>
                             </div>
@@ -329,8 +339,17 @@
                 const notes = ref(storedData.notes || []);
                 const tasks = ref(storedData.tasks || []);
                 const tagOrder = ref(storedData.tagOrder || []);
+                
+                // Add Task State
                 const newTaskInput = ref('');
                 const newTaskDue = ref('');
+                const taskError = ref(false);
+
+                // Edit Task State
+                const editingId = ref(null);
+                const editTitle = ref('');
+                const editDue = ref('');
+
                 const timeTrigger = ref(Date.now());
                 const TAG_REGEX = /#[\w\u4e00-\u9fa5]+/g;
                 const editingNote = ref(null);
@@ -349,7 +368,49 @@
                 const formatRelativeTime = (d) => { const diff = Date.now() - new Date(d).getTime(); if(diff < 60000) return 'Just now'; if(diff < 86400000) return Math.floor(diff/3600000) + 'h ago'; return formatDateTime(d); };
                 const detectedTags = computed(() => parseTags(newTaskInput.value));
                 const getDueDateColor = (task) => { if (task.completed) return 'text-gray-400'; return new Date(task.dueDate).getTime() < timeTrigger.value ? 'text-notion-red font-bold' : 'text-gray-400'; };
-                const addTask = () => { if (!newTaskInput.value.trim()) return; const cleanTitle = newTaskInput.value.replace(TAG_REGEX, '').replace(/\s+/g, ' ').trim(); tasks.value.push({ id: generateId(), title: cleanTitle || "Untitled", completed: false, dueDate: newTaskDue.value || null, tags: parseTags(newTaskInput.value) }); newTaskInput.value = ''; newTaskDue.value = ''; saveData(); };
+                
+                const addTask = () => {
+                    if (!newTaskInput.value.trim()) return;
+                    if (!newTaskDue.value) {
+                        taskError.value = true;
+                        setTimeout(() => taskError.value = false, 2000);
+                        return;
+                    }
+
+                    const cleanTitle = newTaskInput.value.replace(TAG_REGEX, '').replace(/\s+/g, ' ').trim();
+                    tasks.value.push({
+                        id: generateId(),
+                        title: cleanTitle || "Untitled",
+                        completed: false,
+                        dueDate: newTaskDue.value,
+                        tags: parseTags(newTaskInput.value)
+                    });
+                    newTaskInput.value = '';
+                    newTaskDue.value = '';
+                    taskError.value = false;
+                    saveData();
+                };
+
+                const startEdit = (task) => {
+                    editingId.value = task.id;
+                    editTitle.value = task.title;
+                    editDue.value = task.dueDate;
+                };
+
+                const saveEdit = () => {
+                    const task = tasks.value.find(t => t.id === editingId.value);
+                    if (task && editTitle.value.trim() && editDue.value) {
+                        task.title = editTitle.value;
+                        task.dueDate = editDue.value;
+                        saveData();
+                    }
+                    editingId.value = null;
+                };
+
+                const cancelEdit = () => {
+                    editingId.value = null;
+                };
+
                 const toggleTask = (t) => { t.completed = !t.completed; saveData(); };
                 const deleteTask = (id) => { tasks.value = tasks.value.filter(t => t.id !== id); saveData(); };
                 
@@ -374,7 +435,8 @@
 
                 return {
                     sidebarOpen, activeTag, searchQuery, tagListRef, sortedTags, setFilter, highlightText,
-                    newTaskInput, newTaskDue, detectedTags, addTask, toggleTask, deleteTask, getDueDateColor,
+                    newTaskInput, newTaskDue, taskError, detectedTags, addTask, toggleTask, deleteTask, getDueDateColor,
+                    editingId, editTitle, editDue, startEdit, saveEdit, cancelEdit,
                     filteredTasks, filteredNotes, formatDateTime, formatRelativeTime, getPreviewText,
                     editingNote, openEditor, closeEditor, onEditorInput, deleteCurrentNote, editorRef, execCmd, wordCount,
                     tagInput, tagSuggestions, addTag, addSuggestedTag, removeTag, onTagBackspace, tagInputRef
