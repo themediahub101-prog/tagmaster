@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TagMaster Pro v4.2</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        notion: {
+                            bg: '#FFFFFF',
+                            sidebar: '#F7F7F5',
+                            hover: '#EFEFEF',
+                            text: '#37352F',
+                            dim: '#9B9A97',
+                            border: '#E9E9E7',
+                            blue: '#2383E2',
+                            red: '#E03E3E',
+                            yellow: '#FAEB8F'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+
+    <style>
+        body { -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+        
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+        
+        [contenteditable]:focus { outline: none; }
+        
+        /* Modal Editor Style */
+        .modal-editor {
+            min-height: 300px;
+            max-height: 60vh;
+            overflow-y: auto;
+            line-height: 1.7;
+            font-size: 1.05rem;
+        }
+        .modal-editor:empty:before {
+            content: attr(data-placeholder);
+            color: #9B9A97;
+            pointer-events: none;
+            display: block;
+        }
+
+        /* Rich Text Styles */
+        .modal-editor ul { list-style-type: disc; margin-left: 1.5em; }
+        .modal-editor ol { list-style-type: decimal; margin-left: 1.5em; }
+        .modal-editor h1 { font-size: 1.8em; font-weight: 700; margin-top: 0.8em; margin-bottom: 0.4em; }
+        .modal-editor h2 { font-size: 1.4em; font-weight: 600; margin-top: 0.6em; margin-bottom: 0.2em; }
+        .modal-editor blockquote { border-left: 3px solid #E0E0E0; padding-left: 1em; color: #666; font-style: italic; }
+        .modal-editor span[style*="background-color"] { border-radius: 4px; padding: 0 2px; }
+
+        /* Preview Text Clamp */
+        .preview-text {
+            display: -webkit-box;
+            -webkit-line-clamp: 5;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            word-break: break-word;
+            white-space: pre-wrap;
+            color: #4a4a4a;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        /* Horizontal Scroll Hide */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-notion-bg text-notion-text h-screen overflow-hidden flex">
+
+    <div id="app" class="flex w-full h-full">
+        
+        <aside class="fixed inset-y-0 left-0 bg-notion-sidebar border-r border-notion-border flex flex-col transition-all duration-300 z-30 transform md:relative md:translate-x-0"
+               :class="{'translate-x-0 w-64 shadow-xl md:shadow-none': sidebarOpen, '-translate-x-full w-64': !sidebarOpen}">
+            
+            <div class="p-4 flex items-center justify-between font-bold select-none text-notion-text">
+                <div class="flex items-center gap-2">
+                    <div class="w-5 h-5 bg-notion-text text-white flex items-center justify-center rounded text-xs">T</div>
+                    <span>TagMaster</span>
+                </div>
+                <button @click="sidebarOpen = false" class="md:hidden text-notion-dim p-1"><i class="ph ph-caret-left"></i></button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto px-2 py-2">
+                <div class="text-xs font-semibold text-notion-dim uppercase tracking-wider px-2 mb-2 mt-2">Library</div>
+                <div @click="setFilter(null)" 
+                     class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm cursor-pointer transition-colors mb-4"
+                     :class="activeTag === null ? 'bg-gray-200 font-medium' : 'hover:bg-notion-hover'">
+                    <i class="ph ph-list text-lg"></i> All Items
+                </div>
+
+                <div class="text-xs font-semibold text-notion-dim uppercase tracking-wider px-2 mb-2 flex justify-between items-center">
+                    <span>Hashtags</span>
+                    <i class="ph ph-arrows-down-up text-xs" title="Drag to reorder"></i>
+                </div>
+                
+                <div ref="tagListRef" class="space-y-0.5">
+                    <div v-for="tag in sortedTags" :key="tag" :data-id="tag"
+                         @click="setFilter(tag)"
+                         class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm cursor-pointer group transition-colors select-none"
+                         :class="activeTag === tag ? 'bg-blue-100 text-blue-700 font-medium' : 'hover:bg-notion-hover'">
+                        <i class="ph ph-hash text-notion-dim group-hover:text-blue-500 cursor-grab active:cursor-grabbing"></i>
+                        <span class="flex-1">{{ tag }}</span>
+                    </div>
+                </div>
+                
+                <div v-if="sortedTags.length === 0" class="px-3 text-xs text-notion-dim italic mt-2">
+                    Tags appear here.
+                </div>
+            </div>
+        </aside>
+
+        <div v-if="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 bg-black/20 z-20 md:hidden"></div>
+
+        <main class="flex-1 flex flex-col h-full overflow-hidden bg-white relative w-full">
+            
+            <button @click="sidebarOpen = !sidebarOpen" class="absolute top-4 left-4 z-10 text-notion-dim hover:text-notion-text p-1 rounded hover:bg-notion-hover md:hidden">
+                <i class="ph ph-list text-xl"></i>
+            </button>
+
+            <div class="flex-1 overflow-y-auto w-full h-full scroll-smooth">
+                
+                <div class="w-full max-w-7xl mx-auto px-4 md:px-12 py-6 md:py-12">
+                
+                    <header class="mb-8 mt-2 pl-8 md:pl-0 flex flex-col md:flex-row md:items-end justify-between gap-4">
+                        <div>
+                            <h1 class="text-3xl md:text-4xl font-bold mb-1 flex items-center gap-2">
+                                {{ activeTag ? '#' + activeTag : 'Dashboard' }}
+                                <button v-if="activeTag" @click="setFilter(null)" class="text-xs font-normal text-notion-dim bg-gray-100 px-2 py-1 rounded-full hover:bg-gray-200">
+                                    <i class="ph ph-x"></i> Clear
+                                </button>
+                            </h1>
+                            <p class="text-notion-dim text-sm">
+                                {{ activeTag ? 'Filtered view' : 'Overview' }}
+                            </p>
+                        </div>
+                        
+                        <div class="relative w-full md:w-72">
+                            <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
+                            
+                            <input 
+                                type="text" 
+                                v-model="searchQuery" 
+                                placeholder="Search..." 
+                                class="w-full pl-9 pr-10 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                            >
+                            
+                            <div v-if="searchQuery" class="absolute right-9 top-1 bottom-1 w-8 bg-gradient-to-l from-gray-50 to-transparent pointer-events-none z-10"></div>
+
+                            <button v-if="searchQuery" 
+                                    @click="searchQuery=''" 
+                                    class="absolute right-2 top-1/2 -translate-y-1/2 bg-gray-500 hover:bg-gray-600 text-white rounded-full w-5 h-5 flex items-center justify-center transition-colors shadow-sm z-20"
+                                    title="Clear search">
+                                <i class="ph-bold ph-x text-[10px]"></i>
+                            </button>
+                        </div>
+                    </header>
+
+                    <section class="mb-10">
+                        <h2 class="text-xs font-bold text-notion-dim uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Tasks</h2>
+                        
+                        <div class="relative group mb-4 bg-white border border-gray-200 rounded-lg p-2 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all shadow-sm">
+                            <div class="flex flex-col md:flex-row gap-2">
+                                <div class="flex items-center gap-2 flex-1">
+                                    <i class="ph ph-plus text-gray-400 ml-1"></i>
+                                    <input type="text" v-model="newTaskInput" @keyup.enter="addTask" placeholder="Add task... (e.g. Buy milk #home)" class="flex-1 px-1 py-1 outline-none text-sm bg-transparent min-w-0">
+                                </div>
+                                <div class="flex items-center gap-2 border-t md:border-t-0 md:border-l border-gray-100 pt-2 md:pt-0 md:pl-2">
+                                    <input type="datetime-local" v-model="newTaskDue" class="flex-1 md:flex-none text-[11px] text-gray-500 bg-gray-50 rounded px-2 py-1.5 outline-none border border-gray-100 font-mono">
+                                    <button @click="addTask" class="px-4 py-1.5 bg-notion-text text-white rounded-md text-xs font-medium hover:opacity-90 whitespace-nowrap">Add</button>
+                                </div>
+                            </div>
+                            <div v-if="detectedTags.length > 0" class="absolute -bottom-6 left-2 flex gap-1">
+                                <span v-for="tag in detectedTags" :key="tag" class="text-[10px] bg-blue-50 text-blue-600 px-1.5 rounded animate-pulse">#{{ tag }} will be added</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-1">
+                            <div v-for="task in filteredTasks" :key="task.id" class="flex items-start gap-3 p-2 hover:bg-notion-hover rounded group transition-colors duration-200">
+                                <button @click="toggleTask(task)" class="mt-0.5 text-gray-400 hover:text-notion-blue transition-colors shrink-0">
+                                    <i class="ph text-xl" :class="task.completed ? 'ph-check-square text-notion-blue' : 'ph-square'"></i>
+                                </button>
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-sm break-words" :class="{'line-through text-notion-dim': task.completed}">
+                                        <span v-if="searchQuery" v-html="highlightText(task.title)"></span>
+                                        <span v-else>{{ task.title }}</span>
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-2 mt-1">
+                                        <span v-for="tag in task.tags" :key="tag" @click.stop="setFilter(tag)" class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded cursor-pointer hover:bg-gray-200">#{{ tag }}</span>
+                                        <span v-if="task.dueDate" class="text-[10px] flex items-center gap-1 font-mono" :class="getDueDateColor(task)"><i class="ph ph-clock"></i> {{ formatDateTime(task.dueDate) }}</span>
+                                    </div>
+                                </div>
+                                <button @click="deleteTask(task.id)" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 p-1 shrink-0"><i class="ph ph-trash"></i></button>
+                            </div>
+                            <div v-if="filteredTasks.length === 0 && searchQuery" class="text-sm text-gray-400 italic px-2">No tasks matching search.</div>
+                        </div>
+                    </section>
+
+                    <section>
+                        <div class="flex items-center justify-between mb-2">
+                            <h2 class="text-xs font-bold text-notion-dim uppercase tracking-wider">Notes</h2>
+                            <button @click="openEditor(null)" class="flex items-center gap-1.5 text-xs font-medium text-notion-blue hover:bg-blue-50 px-3 py-1.5 rounded transition-colors">
+                                <i class="ph ph-plus-circle text-sm"></i> New Note
+                            </button>
+                        </div>
+
+                        <div class="flex gap-2 overflow-x-auto no-scrollbar py-2 mb-4">
+                            <button @click="setFilter(null)" 
+                                    class="whitespace-nowrap px-3 py-1 rounded-full text-xs border transition-colors"
+                                    :class="activeTag === null ? 'bg-gray-800 text-white border-gray-800' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'">
+                                All
+                            </button>
+                            <button v-for="tag in sortedTags" :key="tag"
+                                    @click="setFilter(tag)"
+                                    class="whitespace-nowrap px-3 py-1 rounded-full text-xs border transition-colors"
+                                    :class="activeTag === tag ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:border-blue-300'">
+                                #{{ tag }}
+                            </button>
+                        </div>
+
+                        <div v-if="filteredNotes.length === 0" class="text-center py-10 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                            <p class="text-sm text-gray-400">{{ searchQuery ? 'No notes found matching query.' : 'No notes here.' }}</p>
+                        </div>
+
+                        <div class="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4">
+                            <div v-for="note in filteredNotes" :key="note.id" 
+                                 @click="openEditor(note)"
+                                 class="break-inside-avoid bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer transition-all hover:-translate-y-0.5 group flex flex-col relative overflow-hidden">
+                                
+                                <div class="mb-3 max-h-32 overflow-hidden relative">
+                                    <div v-if="!note.content" class="text-gray-300 italic text-sm">Empty note...</div>
+                                    <div v-else class="preview-text">
+                                        {{ getPreviewText(note.content) }}
+                                    </div>
+                                    <div class="absolute bottom-0 left-0 w-full h-6 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+                                </div>
+
+                                <div class="flex items-center justify-between pt-2 border-t border-gray-50 mt-auto">
+                                    <div class="flex gap-1 flex-wrap">
+                                        <span v-for="tag in note.tags" :key="tag" class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">#{{ tag }}</span>
+                                    </div>
+                                    <span class="text-[10px] text-gray-300 whitespace-nowrap ml-2">{{ formatRelativeTime(note.updatedAt) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <div class="h-24"></div>
+                </div>
+            </div>
+
+            <div v-if="editingNote" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4 animate-fade-in" @click.self="closeEditor">
+                <div class="bg-white w-full max-w-3xl rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-slide-up">
+                    <div class="flex items-center gap-1 p-2 border-b border-gray-100 bg-gray-50 text-notion-text shrink-0">
+                        <button @click="closeEditor" class="p-2 hover:bg-gray-200 rounded mr-2"><i class="ph ph-x text-lg"></i></button>
+                        <div class="h-6 w-px bg-gray-300 mx-2"></div>
+                        <button @click="execCmd('bold')" class="p-1.5 hover:bg-gray-200 rounded"><i class="ph ph-text-b"></i></button>
+                        <button @click="execCmd('italic')" class="p-1.5 hover:bg-gray-200 rounded"><i class="ph ph-text-italic"></i></button>
+                        <button @click="execCmd('formatBlock', 'H1')" class="p-1.5 hover:bg-gray-200 rounded"><i class="ph ph-text-h-one"></i></button>
+                        <button @click="execCmd('formatBlock', 'H2')" class="p-1.5 hover:bg-gray-200 rounded"><i class="ph ph-text-h-two"></i></button>
+                        <button @click="execCmd('insertUnorderedList')" class="p-1.5 hover:bg-gray-200 rounded"><i class="ph ph-list-bullets"></i></button>
+                        <div class="h-6 w-px bg-gray-300 mx-2"></div>
+                        <div class="flex gap-1 bg-white border border-gray-200 rounded p-0.5">
+                            <button @click="execCmd('hiliteColor', '#FAEB8F')" class="p-1.5 hover:bg-yellow-100 rounded text-yellow-600"><i class="ph ph-highlighter-circle text-lg"></i></button>
+                            <button @click="execCmd('hiliteColor', 'transparent')" class="p-1.5 hover:bg-gray-100 rounded text-gray-500"><i class="ph ph-eraser text-lg"></i></button>
+                        </div>
+                        <div class="flex-1"></div>
+                        <button @click="deleteCurrentNote" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"><i class="ph ph-trash text-lg"></i></button>
+                    </div>
+
+                    <div class="px-8 pt-6 pb-2 shrink-0">
+                        <div class="flex flex-wrap items-center gap-2 mb-2">
+                            <i class="ph ph-tag text-gray-400"></i>
+                            <div v-for="tag in editingNote.tags" :key="tag" class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-sm flex items-center gap-1">{{ tag }} <button @click="removeTag(tag)" class="hover:text-blue-900"><i class="ph ph-x"></i></button></div>
+                            <div class="relative">
+                                <input ref="tagInputRef" type="text" v-model="tagInput" @keydown.enter.prevent="addTag" @keydown.backspace="onTagBackspace" placeholder="Add tag..." class="outline-none text-sm min-w-[80px] py-1 bg-transparent placeholder-gray-300">
+                                <div v-if="tagSuggestions.length > 0" class="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 shadow-lg rounded-md z-50 py-1 max-h-40 overflow-y-auto">
+                                    <div v-for="sug in tagSuggestions" :key="sug" @click="addSuggestedTag(sug)" class="px-3 py-1.5 hover:bg-gray-100 text-sm cursor-pointer text-gray-700">#{{ sug }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="h-px w-full bg-gray-100 mt-2"></div>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto px-8 pb-8 pt-4 cursor-text" @click="$refs.editorRef.focus()">
+                        <div ref="editorRef" class="modal-editor outline-none text-notion-text" contenteditable="true" data-placeholder="Start typing your note..." v-safe-html="editingNote.content" @input="onEditorInput"></div>
+                    </div>
+
+                    <div class="bg-gray-50 px-4 py-2 text-xs text-gray-400 border-t border-gray-100 flex justify-between shrink-0">
+                        <span>Words: {{ wordCount }}</span>
+                        <span>Last edited: {{ formatDateTime(editingNote.updatedAt) }}</span>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, nextTick } = Vue;
+
+        const app = createApp({
+            setup() {
+                const sidebarOpen = ref(window.innerWidth > 768);
+                const activeTag = ref(null);
+                const searchQuery = ref('');
+                const tagListRef = ref(null);
+                const storedData = JSON.parse(localStorage.getItem('tagmaster-v4') || '{"notes":[], "tasks":[], "tagOrder":[]}');
+                const notes = ref(storedData.notes || []);
+                const tasks = ref(storedData.tasks || []);
+                const tagOrder = ref(storedData.tagOrder || []);
+                const newTaskInput = ref('');
+                const newTaskDue = ref('');
+                const timeTrigger = ref(Date.now());
+                const TAG_REGEX = /#[\w\u4e00-\u9fa5]+/g;
+                const editingNote = ref(null);
+                const originalNoteId = ref(null);
+                const tagInput = ref('');
+                const tagInputRef = ref(null);
+                const editorRef = ref(null);
+
+                const saveData = () => { localStorage.setItem('tagmaster-v4', JSON.stringify({ notes: notes.value, tasks: tasks.value, tagOrder: tagOrder.value })); };
+                const setFilter = (tag) => { activeTag.value = tag; if(window.innerWidth < 768) sidebarOpen.value = false; };
+                const highlightText = (text) => { if (!searchQuery.value) return text; const regex = new RegExp(`(${searchQuery.value})`, 'gi'); return text.replace(regex, '<span class="bg-yellow-200 text-black rounded px-0.5">$1</span>'); };
+                const getPreviewText = (html) => { if (!html) return ''; const tempDiv = document.createElement("div"); tempDiv.innerHTML = html; return tempDiv.textContent || tempDiv.innerText || ""; };
+                const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
+                const parseTags = (text) => { const m = text.match(TAG_REGEX); return m ? m.map(t => t.slice(1)) : []; };
+                const formatDateTime = (d) => { if(!d) return ''; const date = new Date(d); return `${date.getMonth()+1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; };
+                const formatRelativeTime = (d) => { const diff = Date.now() - new Date(d).getTime(); if(diff < 60000) return 'Just now'; if(diff < 86400000) return Math.floor(diff/3600000) + 'h ago'; return formatDateTime(d); };
+                const detectedTags = computed(() => parseTags(newTaskInput.value));
+                const getDueDateColor = (task) => { if (task.completed) return 'text-gray-400'; return new Date(task.dueDate).getTime() < timeTrigger.value ? 'text-notion-red font-bold' : 'text-gray-400'; };
+                const addTask = () => { if (!newTaskInput.value.trim()) return; const cleanTitle = newTaskInput.value.replace(TAG_REGEX, '').replace(/\s+/g, ' ').trim(); tasks.value.push({ id: generateId(), title: cleanTitle || "Untitled", completed: false, dueDate: newTaskDue.value || null, tags: parseTags(newTaskInput.value) }); newTaskInput.value = ''; newTaskDue.value = ''; saveData(); };
+                const toggleTask = (t) => { t.completed = !t.completed; saveData(); };
+                const deleteTask = (id) => { tasks.value = tasks.value.filter(t => t.id !== id); saveData(); };
+                
+                const sortedTags = computed(() => { const currentTags = new Set(); notes.value.forEach(n => n.tags.forEach(t => currentTags.add(t))); tasks.value.forEach(t => t.tags.forEach(t => currentTags.add(t))); const orderMap = new Map(); tagOrder.value.forEach((tag, index) => orderMap.set(tag, index)); return Array.from(currentTags).sort((a, b) => { const iA = orderMap.has(a) ? orderMap.get(a) : 9999; const iB = orderMap.has(b) ? orderMap.get(b) : 9999; return iA !== iB ? iA - iB : a.localeCompare(b); }); });
+                const filteredTasks = computed(() => { let res = tasks.value; if (activeTag.value) res = res.filter(task => task.tags.includes(activeTag.value)); if (searchQuery.value) res = res.filter(task => task.title.toLowerCase().includes(searchQuery.value.toLowerCase())); return res.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1)); });
+                const filteredNotes = computed(() => { let res = notes.value; if (activeTag.value) res = res.filter(n => n.tags.includes(activeTag.value)); if (searchQuery.value) { const q = searchQuery.value.toLowerCase(); res = res.filter(n => getPreviewText(n.content).toLowerCase().includes(q) || n.tags.some(t => t.toLowerCase().includes(q))); } return res; });
+
+                const openEditor = (note) => { if (note) { originalNoteId.value = note.id; editingNote.value = JSON.parse(JSON.stringify(note)); } else { originalNoteId.value = null; editingNote.value = { id: generateId(), content: '', tags: [], updatedAt: Date.now() }; } tagInput.value = ''; };
+                const closeEditor = () => { if (!editingNote.value) return; if (originalNoteId.value) { const idx = notes.value.findIndex(n => n.id === originalNoteId.value); if (idx !== -1) notes.value[idx] = editingNote.value; } else { if (editingNote.value.content.trim() || editingNote.value.tags.length > 0) notes.value.unshift(editingNote.value); } saveData(); editingNote.value = null; };
+                const onEditorInput = (e) => { editingNote.value.content = e.target.innerHTML; editingNote.value.updatedAt = Date.now(); };
+                const deleteCurrentNote = () => { if (confirm('Delete?')) { if (originalNoteId.value) notes.value = notes.value.filter(n => n.id !== originalNoteId.value); saveData(); editingNote.value = null; }};
+                const execCmd = (cmd, val = null) => { document.execCommand(cmd, false, val); };
+                
+                const tagSuggestions = computed(() => { if (!tagInput.value) return []; return sortedTags.value.filter(t => t.toLowerCase().includes(tagInput.value.toLowerCase()) && !editingNote.value.tags.includes(t)); });
+                const addTag = () => { const val = tagInput.value.trim().replace(/^#/, ''); if (val && !editingNote.value.tags.includes(val)) editingNote.value.tags.push(val); tagInput.value = ''; };
+                const addSuggestedTag = (tag) => { if (!editingNote.value.tags.includes(tag)) editingNote.value.tags.push(tag); tagInput.value = ''; };
+                const removeTag = (tag) => { editingNote.value.tags = editingNote.value.tags.filter(t => t !== tag); };
+                const onTagBackspace = () => { if (tagInput.value === '' && editingNote.value.tags.length > 0) editingNote.value.tags.pop(); };
+                const wordCount = computed(() => { if (!editingNote.value) return 0; return editingNote.value.content.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).filter(w => w.length > 0).length; });
+
+                onMounted(() => { if (tagListRef.value) { new Sortable(tagListRef.value, { animation: 150, ghostClass: 'opacity-40', onEnd: (evt) => { const items = evt.to.children; const newOrder = []; for(let i=0; i<items.length; i++) newOrder.push(items[i].getAttribute('data-id')); tagOrder.value = newOrder; saveData(); }}); } setInterval(() => timeTrigger.value = Date.now(), 60000); });
+
+                return {
+                    sidebarOpen, activeTag, searchQuery, tagListRef, sortedTags, setFilter, highlightText,
+                    newTaskInput, newTaskDue, detectedTags, addTask, toggleTask, deleteTask, getDueDateColor,
+                    filteredTasks, filteredNotes, formatDateTime, formatRelativeTime, getPreviewText,
+                    editingNote, openEditor, closeEditor, onEditorInput, deleteCurrentNote, editorRef, execCmd, wordCount,
+                    tagInput, tagSuggestions, addTag, addSuggestedTag, removeTag, onTagBackspace, tagInputRef
+                };
+            }
+        });
+
+        app.directive('safe-html', {
+            mounted(el, binding) { el.innerHTML = binding.value; },
+            updated(el, binding) { if (el.innerHTML !== binding.value && document.activeElement !== el) el.innerHTML = binding.value; }
+        });
+
+        app.mount('#app');
+    </script>
+    <style>
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fade-in { animation: fade-in 0.2s ease-out; }
+        @keyframes slide-up { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .animate-slide-up { animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+    </style>
+</body>
+</html>
