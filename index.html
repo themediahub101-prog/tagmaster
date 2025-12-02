@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TagMaster Pro v4.5</title>
+    <title>TagMaster Local v6.1</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -132,6 +132,10 @@
                     Tags appear here.
                 </div>
             </div>
+            
+            <div class="p-3 border-t border-gray-200 text-[10px] text-gray-400 flex items-center gap-2">
+                <i class="ph-bold ph-hard-drives"></i> Local Storage Mode
+            </div>
         </aside>
 
         <div v-if="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 bg-black/20 z-20 md:hidden"></div>
@@ -188,9 +192,11 @@
                                     <input type="text" v-model="newTaskInput" @keyup.enter="addTask" placeholder="Add task... (e.g. Buy milk #home)" class="flex-1 px-1 py-1 outline-none text-sm bg-transparent min-w-0">
                                 </div>
                                 <div class="flex items-center gap-2 border-t md:border-t-0 md:border-l border-gray-100 pt-2 md:pt-0 md:pl-2">
+                                    
                                     <input type="datetime-local" 
                                            v-model="newTaskDue" 
-                                           class="flex-1 md:flex-none w-full md:w-auto h-9 text-xs text-gray-600 bg-gray-50 rounded px-2 outline-none border transition-colors font-mono"
+                                           style="color-scheme: light;"
+                                           class="flex-1 md:flex-none w-full md:w-auto h-9 text-xs text-gray-900 bg-gray-50 rounded px-2 outline-none border transition-colors font-mono"
                                            :class="taskError ? 'border-red-500 bg-red-50' : 'border-gray-200'">
                                     
                                     <button @click="addTask" class="h-9 px-4 bg-notion-text text-white rounded-md text-xs font-medium hover:opacity-90 whitespace-nowrap">Add</button>
@@ -230,7 +236,11 @@
                                 <div v-else class="flex flex-col gap-2 bg-white border border-blue-200 rounded p-2 shadow-sm">
                                     <input type="text" v-model="editTitle" class="w-full text-sm outline-none border-b border-gray-200 pb-1" placeholder="Task title">
                                     <div class="flex items-center justify-between gap-2">
-                                        <input type="datetime-local" v-model="editDue" class="flex-1 text-xs text-gray-600 bg-gray-50 rounded px-2 py-1.5 border border-gray-200 h-8">
+                                        <input type="datetime-local" 
+                                               v-model="editDue" 
+                                               style="color-scheme: light;"
+                                               class="flex-1 text-xs text-gray-900 bg-gray-50 rounded px-2 py-1.5 border border-gray-200 h-8 font-mono">
+                                        
                                         <div class="flex gap-2">
                                             <button @click="saveEdit" class="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 h-8">Save</button>
                                             <button @click="cancelEdit" class="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 h-8">Cancel</button>
@@ -331,34 +341,46 @@
 
         const app = createApp({
             setup() {
+                // UI State
                 const sidebarOpen = ref(window.innerWidth > 768);
                 const activeTag = ref(null);
                 const searchQuery = ref('');
                 const tagListRef = ref(null);
-                const storedData = JSON.parse(localStorage.getItem('tagmaster-v4') || '{"notes":[], "tasks":[], "tagOrder":[]}');
+                
+                // Data (LocalStorage)
+                const storedData = JSON.parse(localStorage.getItem('tagmaster-local') || '{"notes":[], "tasks":[], "tagOrder":[]}');
                 const notes = ref(storedData.notes || []);
                 const tasks = ref(storedData.tasks || []);
                 const tagOrder = ref(storedData.tagOrder || []);
                 
-                // Add Task State
+                // Inputs
                 const newTaskInput = ref('');
                 const newTaskDue = ref('');
                 const taskError = ref(false);
-
-                // Edit Task State
                 const editingId = ref(null);
                 const editTitle = ref('');
                 const editDue = ref('');
 
-                const timeTrigger = ref(Date.now());
-                const TAG_REGEX = /#[\w\u4e00-\u9fa5]+/g;
+                // Editor
                 const editingNote = ref(null);
                 const originalNoteId = ref(null);
                 const tagInput = ref('');
                 const tagInputRef = ref(null);
                 const editorRef = ref(null);
 
-                const saveData = () => { localStorage.setItem('tagmaster-v4', JSON.stringify({ notes: notes.value, tasks: tasks.value, tagOrder: tagOrder.value })); };
+                const timeTrigger = ref(Date.now());
+                const TAG_REGEX = /#[\w\u4e00-\u9fa5]+/g;
+
+                // --- DATA PERSISTENCE ---
+                const saveData = () => {
+                    localStorage.setItem('tagmaster-local', JSON.stringify({
+                        notes: notes.value,
+                        tasks: tasks.value,
+                        tagOrder: tagOrder.value
+                    }));
+                };
+
+                // --- Helpers ---
                 const setFilter = (tag) => { activeTag.value = tag; if(window.innerWidth < 768) sidebarOpen.value = false; };
                 const highlightText = (text) => { if (!searchQuery.value) return text; const regex = new RegExp(`(${searchQuery.value})`, 'gi'); return text.replace(regex, '<span class="bg-yellow-200 text-black rounded px-0.5">$1</span>'); };
                 const getPreviewText = (html) => { if (!html) return ''; const tempDiv = document.createElement("div"); tempDiv.innerHTML = html; return tempDiv.textContent || tempDiv.innerText || ""; };
@@ -366,72 +388,47 @@
                 const parseTags = (text) => { const m = text.match(TAG_REGEX); return m ? m.map(t => t.slice(1)) : []; };
                 const formatDateTime = (d) => { if(!d) return ''; const date = new Date(d); return `${date.getMonth()+1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; };
                 const formatRelativeTime = (d) => { const diff = Date.now() - new Date(d).getTime(); if(diff < 60000) return 'Just now'; if(diff < 86400000) return Math.floor(diff/3600000) + 'h ago'; return formatDateTime(d); };
-                const detectedTags = computed(() => parseTags(newTaskInput.value));
                 const getDueDateColor = (task) => { if (task.completed) return 'text-gray-400'; return new Date(task.dueDate).getTime() < timeTrigger.value ? 'text-notion-red font-bold' : 'text-gray-400'; };
                 
+                // --- Task Logic ---
+                const detectedTags = computed(() => parseTags(newTaskInput.value));
                 const addTask = () => {
                     if (!newTaskInput.value.trim()) return;
-                    if (!newTaskDue.value) {
-                        taskError.value = true;
-                        setTimeout(() => taskError.value = false, 2000);
-                        return;
-                    }
-
+                    if (!newTaskDue.value) { taskError.value = true; setTimeout(() => taskError.value = false, 2000); return; }
                     const cleanTitle = newTaskInput.value.replace(TAG_REGEX, '').replace(/\s+/g, ' ').trim();
-                    tasks.value.push({
-                        id: generateId(),
-                        title: cleanTitle || "Untitled",
-                        completed: false,
-                        dueDate: newTaskDue.value,
-                        tags: parseTags(newTaskInput.value)
-                    });
-                    newTaskInput.value = '';
-                    newTaskDue.value = '';
-                    taskError.value = false;
+                    tasks.value.push({ id: generateId(), title: cleanTitle || "Untitled", completed: false, dueDate: newTaskDue.value, tags: parseTags(newTaskInput.value) });
+                    newTaskInput.value = ''; newTaskDue.value = ''; taskError.value = false;
                     saveData();
                 };
-
-                const startEdit = (task) => {
-                    editingId.value = task.id;
-                    editTitle.value = task.title;
-                    editDue.value = task.dueDate;
-                };
-
-                const saveEdit = () => {
-                    const task = tasks.value.find(t => t.id === editingId.value);
-                    if (task && editTitle.value.trim() && editDue.value) {
-                        task.title = editTitle.value;
-                        task.dueDate = editDue.value;
-                        saveData();
-                    }
-                    editingId.value = null;
-                };
-
-                const cancelEdit = () => {
-                    editingId.value = null;
-                };
-
+                const startEdit = (t) => { editingId.value = t.id; editTitle.value = t.title; editDue.value = t.dueDate; };
+                const saveEdit = () => { const t = tasks.value.find(x => x.id === editingId.value); if(t && editTitle.value.trim() && editDue.value){ t.title = editTitle.value; t.dueDate = editDue.value; saveData(); } editingId.value = null; };
+                const cancelEdit = () => { editingId.value = null; };
                 const toggleTask = (t) => { t.completed = !t.completed; saveData(); };
                 const deleteTask = (id) => { tasks.value = tasks.value.filter(t => t.id !== id); saveData(); };
                 
-                const sortedTags = computed(() => { const currentTags = new Set(); notes.value.forEach(n => n.tags.forEach(t => currentTags.add(t))); tasks.value.forEach(t => t.tags.forEach(t => currentTags.add(t))); const orderMap = new Map(); tagOrder.value.forEach((tag, index) => orderMap.set(tag, index)); return Array.from(currentTags).sort((a, b) => { const iA = orderMap.has(a) ? orderMap.get(a) : 9999; const iB = orderMap.has(b) ? orderMap.get(b) : 9999; return iA !== iB ? iA - iB : a.localeCompare(b); }); });
-                const filteredTasks = computed(() => { let res = tasks.value; if (activeTag.value) res = res.filter(task => task.tags.includes(activeTag.value)); if (searchQuery.value) res = res.filter(task => task.title.toLowerCase().includes(searchQuery.value.toLowerCase())); return res.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1)); });
+                // --- Filters & Sorts ---
+                const sortedTags = computed(() => { const set = new Set(); notes.value.forEach(n => n.tags.forEach(t => set.add(t))); tasks.value.forEach(t => t.tags.forEach(t => set.add(t))); const map = new Map(); tagOrder.value.forEach((t, i) => map.set(t, i)); return Array.from(set).sort((a, b) => { const iA = map.has(a) ? map.get(a) : 9999; const iB = map.has(b) ? map.get(b) : 9999; return iA !== iB ? iA - iB : a.localeCompare(b); }); });
+                const filteredTasks = computed(() => { let res = tasks.value; if (activeTag.value) res = res.filter(t => t.tags.includes(activeTag.value)); if (searchQuery.value) res = res.filter(t => t.title.toLowerCase().includes(searchQuery.value.toLowerCase())); return res.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1)); });
                 const filteredNotes = computed(() => { let res = notes.value; if (activeTag.value) res = res.filter(n => n.tags.includes(activeTag.value)); if (searchQuery.value) { const q = searchQuery.value.toLowerCase(); res = res.filter(n => getPreviewText(n.content).toLowerCase().includes(q) || n.tags.some(t => t.toLowerCase().includes(q))); } return res; });
 
-                const openEditor = (note) => { if (note) { originalNoteId.value = note.id; editingNote.value = JSON.parse(JSON.stringify(note)); } else { originalNoteId.value = null; editingNote.value = { id: generateId(), content: '', tags: [], updatedAt: Date.now() }; } tagInput.value = ''; };
+                // --- Editor ---
+                const openEditor = (n) => { if (n) { originalNoteId.value = n.id; editingNote.value = JSON.parse(JSON.stringify(n)); } else { originalNoteId.value = null; editingNote.value = { id: generateId(), content: '', tags: [], updatedAt: Date.now() }; } tagInput.value = ''; };
                 const closeEditor = () => { if (!editingNote.value) return; if (originalNoteId.value) { const idx = notes.value.findIndex(n => n.id === originalNoteId.value); if (idx !== -1) notes.value[idx] = editingNote.value; } else { if (editingNote.value.content.trim() || editingNote.value.tags.length > 0) notes.value.unshift(editingNote.value); } saveData(); editingNote.value = null; };
-                const onEditorInput = (e) => { editingNote.value.content = e.target.innerHTML; editingNote.value.updatedAt = Date.now(); };
+                const onEditorInput = (e) => { editingNote.value.content = e.target.innerHTML; editingNote.value.updatedAt = Date.now(); saveData(); };
                 const deleteCurrentNote = () => { if (confirm('Delete?')) { if (originalNoteId.value) notes.value = notes.value.filter(n => n.id !== originalNoteId.value); saveData(); editingNote.value = null; }};
-                const execCmd = (cmd, val = null) => { document.execCommand(cmd, false, val); };
+                const execCmd = (c, v = null) => { document.execCommand(c, false, v); };
                 
                 const tagSuggestions = computed(() => { if (!tagInput.value) return []; return sortedTags.value.filter(t => t.toLowerCase().includes(tagInput.value.toLowerCase()) && !editingNote.value.tags.includes(t)); });
-                const addTag = () => { const val = tagInput.value.trim().replace(/^#/, ''); if (val && !editingNote.value.tags.includes(val)) editingNote.value.tags.push(val); tagInput.value = ''; };
-                const addSuggestedTag = (tag) => { if (!editingNote.value.tags.includes(tag)) editingNote.value.tags.push(tag); tagInput.value = ''; };
-                const removeTag = (tag) => { editingNote.value.tags = editingNote.value.tags.filter(t => t !== tag); };
+                const addTag = () => { const v = tagInput.value.trim().replace(/^#/, ''); if (v && !editingNote.value.tags.includes(v)) editingNote.value.tags.push(v); tagInput.value = ''; };
+                const addSuggestedTag = (t) => { if (!editingNote.value.tags.includes(t)) editingNote.value.tags.push(t); tagInput.value = ''; };
+                const removeTag = (t) => { editingNote.value.tags = editingNote.value.tags.filter(x => x !== t); };
                 const onTagBackspace = () => { if (tagInput.value === '' && editingNote.value.tags.length > 0) editingNote.value.tags.pop(); };
                 const wordCount = computed(() => { if (!editingNote.value) return 0; return editingNote.value.content.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).filter(w => w.length > 0).length; });
 
-                onMounted(() => { if (tagListRef.value) { new Sortable(tagListRef.value, { animation: 150, ghostClass: 'opacity-40', onEnd: (evt) => { const items = evt.to.children; const newOrder = []; for(let i=0; i<items.length; i++) newOrder.push(items[i].getAttribute('data-id')); tagOrder.value = newOrder; saveData(); }}); } setInterval(() => timeTrigger.value = Date.now(), 60000); });
+                onMounted(() => {
+                    if (tagListRef.value) { new Sortable(tagListRef.value, { animation: 150, ghostClass: 'opacity-40', onEnd: (evt) => { const items = evt.to.children; const newOrder = []; for(let i=0; i<items.length; i++) newOrder.push(items[i].getAttribute('data-id')); tagOrder.value = newOrder; saveData(); }}); }
+                    setInterval(() => timeTrigger.value = Date.now(), 60000);
+                });
 
                 return {
                     sidebarOpen, activeTag, searchQuery, tagListRef, sortedTags, setFilter, highlightText,
