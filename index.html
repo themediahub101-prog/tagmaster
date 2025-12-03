@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- 防止 iOS 自動偵測電話號碼影響樣式 -->
     <meta name="format-detection" content="telephone=no">
-    <title>TagMaster v7.1</title>
+    <title>TagMaster v7.5</title>
     
     <!-- FAVICON & APPLE TOUCH ICON GENERATOR -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23F97316'/><path d='M30 35h40M30 55h40M30 75h25' stroke='white' stroke-width='8' stroke-linecap='round'/></svg>">
@@ -41,33 +42,65 @@
 
     <style>
         body { -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+        
+        /* 自定義捲軸 */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+        
         [contenteditable]:focus { outline: none; }
         
+        /* 編輯器樣式 */
         .modal-editor { min-height: 300px; max-height: 60vh; overflow-y: auto; line-height: 1.7; font-size: 1.05rem; }
         .modal-editor:empty:before { content: attr(data-placeholder); color: #9B9A97; pointer-events: none; display: block; }
+        
+        /* Rich Text Styles */
         .modal-editor ul { list-style-type: disc; margin-left: 1.5em; }
         .modal-editor ol { list-style-type: decimal; margin-left: 1.5em; }
         .modal-editor h1 { font-size: 1.8em; font-weight: 700; margin-top: 0.8em; margin-bottom: 0.4em; }
         .modal-editor h2 { font-size: 1.4em; font-weight: 600; margin-top: 0.6em; margin-bottom: 0.2em; }
-        .modal-editor blockquote { border-left: 3px solid #E0E0E0; padding-left: 1em; color: #666; font-style: italic; }
+        .modal-editor blockquote { border-left: 4px solid #E0E0E0; padding-left: 1em; color: #666; font-style: italic; margin: 0.5em 0; }
         .modal-editor span[style*="background-color"] { border-radius: 4px; padding: 0 2px; }
+        
+        /* Checkbox Style in Editor */
+        .modal-editor input[type="checkbox"] {
+            appearance: none; -webkit-appearance: none;
+            width: 1.1em; height: 1.1em;
+            border: 1.5px solid #37352F; border-radius: 3px;
+            display: inline-block; vertical-align: middle; margin-right: 0.5em;
+            position: relative; cursor: pointer;
+        }
+        .modal-editor input[type="checkbox"]:checked {
+            background-color: #2383E2; border-color: #2383E2;
+        }
+        .modal-editor input[type="checkbox"]:checked::after {
+            content: ''; position: absolute; left: 0.35em; top: 0.1em; width: 0.3em; height: 0.6em;
+            border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg);
+        }
 
+        /* 卡片預覽截斷 */
         .preview-text { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; white-space: pre-wrap; color: #4a4a4a; font-size: 0.875rem; line-height: 1.5; }
+        
+        /* 隱藏橫向捲軸 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
+        /* 錯誤搖晃動畫 */
         .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
 
-        /* iOS Date Fix */
+        /* iOS Safari 日期顯示修復 */
         input[type="date"], input[type="time"], input[type="datetime-local"] {
-            -webkit-appearance: none; appearance: none;
-            color: #37352F !important; -webkit-text-fill-color: #37352F !important;
-            opacity: 1 !important; background-color: white; min-height: 36px; padding-top: 6px; padding-bottom: 6px;
+            -webkit-appearance: none; 
+            appearance: none;
+            color: #37352F !important; 
+            -webkit-text-fill-color: #37352F !important;
+            opacity: 1 !important; 
+            background-color: white; 
+            min-height: 36px; 
+            padding-top: 6px; 
+            padding-bottom: 6px;
         }
     </style>
 </head>
@@ -75,15 +108,18 @@
 
     <div id="app" class="flex w-full h-full">
         
-        <!-- SIDEBAR -->
+        <!-- ==================== SIDEBAR ==================== -->
         <aside class="fixed inset-y-0 left-0 bg-notion-sidebar border-r border-notion-border flex flex-col transition-all duration-300 z-30 transform md:relative md:translate-x-0"
                :class="{'translate-x-0 w-64 shadow-xl md:shadow-none': sidebarOpen, '-translate-x-full w-64': !sidebarOpen}">
             
             <div class="p-4 flex items-center justify-between font-bold select-none text-notion-text">
                 <div class="flex items-center gap-2">
-                    <div class="w-6 h-6 bg-orange-500 text-white flex items-center justify-center rounded text-xs"><i class="ph-bold ph-note text-sm"></i></div>
+                    <div class="w-6 h-6 bg-orange-500 text-white flex items-center justify-center rounded text-xs">
+                        <i class="ph-bold ph-note text-sm"></i>
+                    </div>
                     <span>TagMaster</span>
                 </div>
+                <!-- Mobile Close Sidebar -->
                 <button @click="sidebarOpen = false" class="md:hidden text-notion-dim p-1"><i class="ph ph-caret-left"></i></button>
             </div>
 
@@ -110,7 +146,9 @@
                     </div>
                 </div>
                 
-                <div v-if="sortedTags.length === 0" class="px-3 text-xs text-notion-dim italic mt-2">Tags appear here.</div>
+                <div v-if="sortedTags.length === 0" class="px-3 text-xs text-notion-dim italic mt-2">
+                    Tags appear here.
+                </div>
             </div>
             
             <!-- DATA MANAGEMENT FOOTER -->
@@ -119,107 +157,171 @@
                     <i class="ph-bold ph-hard-drives"></i> Local Storage
                 </div>
                 <div class="flex gap-2">
-                    <button @click="exportData" class="flex-1 flex items-center justify-center gap-1 bg-white border border-gray-200 rounded py-1.5 text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm">
+                    <!-- Export Button -->
+                    <button @click="exportData" class="flex-1 flex items-center justify-center gap-1 bg-white border border-gray-200 rounded py-1.5 text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm" title="Download Backup">
                         <i class="ph ph-download-simple"></i> Export
                     </button>
-                    <button @click="$refs.fileInput.click()" class="flex-1 flex items-center justify-center gap-1 bg-white border border-gray-200 rounded py-1.5 text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm">
+                    <!-- Import Button -->
+                    <button @click="$refs.fileInput.click()" class="flex-1 flex items-center justify-center gap-1 bg-white border border-gray-200 rounded py-1.5 text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm" title="Restore Backup">
                         <i class="ph ph-upload-simple"></i> Import
                     </button>
+                    <!-- Hidden File Input -->
                     <input ref="fileInput" type="file" class="hidden" accept=".json" @change="importData">
                 </div>
             </div>
         </aside>
 
+        <!-- Sidebar Overlay for Mobile -->
         <div v-if="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 bg-black/20 z-20 md:hidden"></div>
 
-        <!-- MAIN CONTENT -->
+        <!-- ==================== MAIN CONTENT ==================== -->
         <main class="flex-1 flex flex-col h-full overflow-hidden bg-white relative w-full">
-            <button @click="sidebarOpen = !sidebarOpen" class="absolute top-4 left-4 z-10 text-notion-dim hover:text-notion-text p-1 rounded hover:bg-notion-hover md:hidden"><i class="ph ph-list text-xl"></i></button>
+            
+            <!-- Mobile Toggle -->
+            <button @click="sidebarOpen = !sidebarOpen" class="absolute top-4 left-4 z-10 text-notion-dim hover:text-notion-text p-1 rounded hover:bg-notion-hover md:hidden">
+                <i class="ph ph-list text-xl"></i>
+            </button>
 
+            <!-- Scrollable Area -->
             <div class="flex-1 overflow-y-auto w-full h-full scroll-smooth">
+                
                 <div class="w-full max-w-7xl mx-auto px-4 md:px-12 py-6 md:py-12">
-                    
-                    <!-- Header -->
+                
+                    <!-- 1. Header & Search -->
                     <header class="mb-8 mt-2 pl-8 md:pl-0 flex flex-col md:flex-row md:items-end justify-between gap-4">
                         <div class="flex-1">
                             <h1 class="text-3xl md:text-4xl font-bold mb-1 flex items-center gap-2">
                                 {{ activeTag ? '#' + activeTag : 'Dashboard' }}
-                                <button v-if="activeTag" @click="setFilter(null)" class="text-xs font-normal text-notion-dim bg-gray-100 px-2 py-1 rounded-full hover:bg-gray-200"><i class="ph ph-x"></i> Clear</button>
+                                <button v-if="activeTag" @click="setFilter(null)" class="text-xs font-normal text-notion-dim bg-gray-100 px-2 py-1 rounded-full hover:bg-gray-200">
+                                    <i class="ph ph-x"></i> Clear
+                                </button>
                             </h1>
-                            <p class="text-notion-dim text-sm">{{ activeTag ? 'Filtered view' : 'Overview' }}</p>
+                            <p class="text-notion-dim text-sm">
+                                {{ activeTag ? 'Filtered view' : 'Overview' }}
+                            </p>
                         </div>
+                        
+                        <!-- Search Bar -->
                         <div class="relative w-1/2 md:w-72 self-end">
                             <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
-                            <input type="text" v-model="searchQuery" placeholder="Search" class="w-full pl-9 pr-10 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all">
+                            <input 
+                                type="text" 
+                                v-model="searchQuery" 
+                                placeholder="Search" 
+                                class="w-full pl-9 pr-10 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                            >
                             <div v-if="searchQuery" class="absolute right-9 top-1 bottom-1 w-8 bg-gradient-to-l from-gray-50 to-transparent pointer-events-none z-10"></div>
-                            <button v-if="searchQuery" @click="searchQuery=''" class="absolute right-2 top-1/2 -translate-y-1/2 bg-gray-500 hover:bg-gray-600 text-white rounded-full w-5 h-5 flex items-center justify-center transition-colors shadow-sm z-20"><i class="ph-bold ph-x text-[10px]"></i></button>
+                            <button v-if="searchQuery" 
+                                    @click="searchQuery=''" 
+                                    class="absolute right-2 top-1/2 -translate-y-1/2 bg-gray-500 hover:bg-gray-600 text-white rounded-full w-5 h-5 flex items-center justify-center transition-colors shadow-sm z-20"
+                                    title="Clear search">
+                                <i class="ph-bold ph-x text-[10px]"></i>
+                            </button>
                         </div>
                     </header>
 
-                    <!-- Tasks -->
+                    <!-- 2. Tasks Section -->
                     <section class="mb-10">
                         <h2 class="text-xs font-bold text-notion-dim uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Tasks</h2>
-                        <div class="relative group mb-4 bg-white border border-gray-200 rounded-lg p-2 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all shadow-sm" :class="{'border-red-400 ring-2 ring-red-100 shake': taskError}">
+                        
+                        <!-- Add Task Input -->
+                        <div class="relative group mb-4 bg-white border border-gray-200 rounded-lg p-2 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all shadow-sm"
+                             :class="{'border-red-400 ring-2 ring-red-100 shake': taskError}">
                             <div class="flex flex-col md:flex-row gap-2">
                                 <div class="flex items-center gap-2 flex-1">
                                     <i class="ph ph-plus text-gray-400 ml-1"></i>
                                     <input type="text" v-model="newTaskInput" @keyup.enter="addTask" placeholder="Add task... (e.g. Buy milk #home)" class="flex-1 px-1 py-1 outline-none text-sm bg-transparent min-w-0">
                                 </div>
                                 <div class="flex items-center gap-2 border-t md:border-t-0 md:border-l border-gray-100 pt-2 md:pt-0 md:pl-2">
-                                    <input type="datetime-local" v-model="newTaskDue" style="color-scheme: light;" class="flex-1 md:flex-none w-full md:w-auto text-xs text-gray-900 bg-white rounded px-2 outline-none border transition-colors font-mono" :class="taskError ? 'border-red-500' : 'border-gray-300'">
+                                    
+                                    <!-- iOS FIX applied -->
+                                    <input type="datetime-local" 
+                                           v-model="newTaskDue" 
+                                           style="color-scheme: light;"
+                                           class="flex-1 md:flex-none w-full md:w-auto text-xs text-gray-900 bg-white rounded px-2 outline-none border transition-colors font-mono"
+                                           :class="taskError ? 'border-red-500' : 'border-gray-300'">
+                                    
                                     <button @click="addTask" class="h-9 px-4 bg-notion-text text-white rounded-md text-xs font-medium hover:opacity-90 whitespace-nowrap">Add</button>
                                 </div>
                             </div>
-                            <div v-if="detectedTags.length > 0" class="absolute -bottom-6 left-2 flex gap-1"><span v-for="tag in detectedTags" :key="tag" class="text-[10px] bg-blue-50 text-blue-600 px-1.5 rounded animate-pulse">#{{ tag }} will be added</span></div>
-                            <div v-if="taskError" class="absolute -bottom-6 right-0 text-[10px] text-red-500 font-bold">* Due date required</div>
+                            <div v-if="detectedTags.length > 0" class="absolute -bottom-6 left-2 flex gap-1">
+                                <span v-for="tag in detectedTags" :key="tag" class="text-[10px] bg-blue-50 text-blue-600 px-1.5 rounded animate-pulse">#{{ tag }} will be added</span>
+                            </div>
+                             <div v-if="taskError" class="absolute -bottom-6 right-0 text-[10px] text-red-500 font-bold">
+                                * Due date required
+                            </div>
                         </div>
 
+                        <!-- Task List -->
                         <div class="space-y-1">
                             <div v-for="task in filteredTasks" :key="task.id" class="p-2 hover:bg-notion-hover rounded group transition-colors duration-200">
+                                
+                                <!-- VIEW MODE -->
                                 <div v-if="editingId !== task.id" class="flex items-start gap-3">
-                                    <button @click="toggleTask(task)" class="mt-0.5 text-gray-400 hover:text-notion-blue transition-colors shrink-0"><i class="ph text-xl" :class="task.completed ? 'ph-check-square text-notion-blue' : 'ph-square'"></i></button>
+                                    <button @click="toggleTask(task)" class="mt-0.5 text-gray-400 hover:text-notion-blue transition-colors shrink-0">
+                                        <i class="ph text-xl" :class="task.completed ? 'ph-check-square text-notion-blue' : 'ph-square'"></i>
+                                    </button>
                                     <div class="flex-1 min-w-0">
-                                        <div class="text-sm break-words" :class="{'line-through text-notion-dim': task.completed}"><span v-if="searchQuery" v-html="highlightText(task.title)"></span><span v-else>{{ task.title }}</span></div>
+                                        <div class="text-sm break-words" :class="{'line-through text-notion-dim': task.completed}">
+                                            <span v-if="searchQuery" v-html="highlightText(task.title)"></span>
+                                            <span v-else>{{ task.title }}</span>
+                                        </div>
                                         <div class="flex flex-wrap items-center gap-2 mt-1">
                                             <span v-for="tag in task.tags" :key="tag" @click.stop="setFilter(tag)" class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded cursor-pointer hover:bg-gray-200">#{{ tag }}</span>
                                             <span v-if="task.dueDate" class="text-[10px] flex items-center gap-1 font-mono" :class="getDueDateColor(task)"><i class="ph ph-clock"></i> {{ formatDateTime(task.dueDate) }}</span>
                                         </div>
                                     </div>
                                     <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button @click="startEdit(task)" class="text-gray-400 hover:text-blue-500 p-1"><i class="ph ph-pencil-simple"></i></button>
-                                        <button @click="deleteTask(task.id)" class="text-gray-400 hover:text-red-500 p-1"><i class="ph ph-trash"></i></button>
+                                        <button @click="startEdit(task)" class="text-gray-400 hover:text-blue-500 p-1" title="Edit"><i class="ph ph-pencil-simple"></i></button>
+                                        <button @click="deleteTask(task.id)" class="text-gray-400 hover:text-red-500 p-1" title="Delete"><i class="ph ph-trash"></i></button>
                                     </div>
                                 </div>
+
+                                <!-- EDIT MODE -->
                                 <div v-else class="flex flex-col gap-2 bg-white border border-blue-200 rounded p-2 shadow-sm">
                                     <input type="text" v-model="editTitle" class="w-full text-sm outline-none border-b border-gray-200 pb-1" placeholder="Task title">
                                     <div class="flex items-center justify-between gap-2">
-                                        <input type="datetime-local" v-model="editDue" style="color-scheme: light;" class="flex-1 text-xs text-gray-900 bg-white rounded px-2 py-1.5 border border-gray-200 h-8 font-mono">
+                                        <input type="datetime-local" 
+                                               v-model="editDue" 
+                                               style="color-scheme: light;"
+                                               class="flex-1 text-xs text-gray-900 bg-white rounded px-2 py-1.5 border border-gray-200 h-8 font-mono">
+                                        
                                         <div class="flex gap-2">
                                             <button @click="saveEdit" class="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 h-8">Save</button>
                                             <button @click="cancelEdit" class="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 h-8">Cancel</button>
                                         </div>
                                     </div>
                                 </div>
+
                             </div>
                             <div v-if="filteredTasks.length === 0 && searchQuery" class="text-sm text-gray-400 italic px-2">No tasks matching search.</div>
                         </div>
                     </section>
 
-                    <!-- Notes -->
+                    <!-- 3. Notes Section -->
                     <section>
                         <div class="flex items-center justify-between mb-2">
                             <h2 class="text-xs font-bold text-notion-dim uppercase tracking-wider">Notes</h2>
-                            <button @click="openEditor(null)" class="flex items-center gap-1.5 text-xs font-medium text-notion-blue hover:bg-blue-50 px-3 py-1.5 rounded transition-colors"><i class="ph ph-plus-circle text-sm"></i> New Note</button>
+                            <button @click="openEditor(null)" class="flex items-center gap-1.5 text-xs font-medium text-notion-blue hover:bg-blue-50 px-3 py-1.5 rounded transition-colors">
+                                <i class="ph ph-plus-circle text-sm"></i> New Note
+                            </button>
                         </div>
+
+                        <!-- Horizontal Tag Filter -->
                         <div class="flex gap-2 overflow-x-auto no-scrollbar py-2 mb-4">
                             <button @click="setFilter(null)" class="whitespace-nowrap px-3 py-1 rounded-full text-xs border transition-colors" :class="activeTag === null ? 'bg-gray-800 text-white border-gray-800' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'">All</button>
                             <button v-for="tag in sortedTags" :key="tag" @click="setFilter(tag)" class="whitespace-nowrap px-3 py-1 rounded-full text-xs border transition-colors" :class="activeTag === tag ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:border-blue-300'">#{{ tag }}</button>
                         </div>
-                        <div v-if="filteredNotes.length === 0" class="text-center py-10 bg-gray-50 rounded-lg border border-dashed border-gray-200"><p class="text-sm text-gray-400">{{ searchQuery ? 'No notes found.' : 'No notes here.' }}</p></div>
+
+                        <div v-if="filteredNotes.length === 0" class="text-center py-10 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                            <p class="text-sm text-gray-400">{{ searchQuery ? 'No notes found matching query.' : 'No notes here.' }}</p>
+                        </div>
+
+                        <!-- Masonry Layout -->
                         <div class="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4">
                             <div v-for="note in filteredNotes" :key="note.id" @click="openEditor(note)" class="break-inside-avoid bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer transition-all hover:-translate-y-0.5 group flex flex-col relative overflow-hidden">
                                 <div class="mb-3 max-h-32 overflow-hidden relative">
-                                    <div v-if="!note.content" class="text-gray-300 italic text-sm">Empty...</div>
+                                    <div v-if="!note.content" class="text-gray-300 italic text-sm">Empty note...</div>
                                     <div v-else class="preview-text">{{ getPreviewText(note.content) }}</div>
                                     <div class="absolute bottom-0 left-0 w-full h-6 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
                                 </div>
@@ -230,29 +332,66 @@
                             </div>
                         </div>
                     </section>
+                    
                     <div class="h-24"></div>
                 </div>
             </div>
 
-            <!-- Editor Modal -->
-            <div v-if="editingNote" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4 animate-fade-in" @click.self="closeEditor">
-                <div class="bg-white w-full max-w-3xl rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-slide-up">
-                    <div class="flex items-center gap-1 p-2 border-b border-gray-100 bg-gray-50 text-notion-text shrink-0">
-                        <button @click="closeEditor" class="p-2 hover:bg-gray-200 rounded mr-2"><i class="ph ph-x text-lg"></i></button>
-                        <div class="h-6 w-px bg-gray-300 mx-2"></div>
-                        <button @click="execCmd('bold')" class="p-1.5 hover:bg-gray-200 rounded"><i class="ph ph-text-b"></i></button>
-                        <button @click="execCmd('italic')" class="p-1.5 hover:bg-gray-200 rounded"><i class="ph ph-text-italic"></i></button>
-                        <button @click="execCmd('formatBlock', 'H1')" class="p-1.5 hover:bg-gray-200 rounded"><i class="ph ph-text-h-one"></i></button>
-                        <button @click="execCmd('formatBlock', 'H2')" class="p-1.5 hover:bg-gray-200 rounded"><i class="ph ph-text-h-two"></i></button>
-                        <button @click="execCmd('insertUnorderedList')" class="p-1.5 hover:bg-gray-200 rounded"><i class="ph ph-list-bullets"></i></button>
-                        <div class="h-6 w-px bg-gray-300 mx-2"></div>
-                        <div class="flex gap-1 bg-white border border-gray-200 rounded p-0.5">
-                            <button @click="execCmd('hiliteColor', '#FAEB8F')" class="p-1.5 hover:bg-yellow-100 rounded text-yellow-600"><i class="ph ph-highlighter-circle text-lg"></i></button>
-                            <button @click="execCmd('hiliteColor', 'transparent')" class="p-1.5 hover:bg-gray-100 rounded text-gray-500"><i class="ph ph-eraser text-lg"></i></button>
+            <!-- ==================== EDITOR MODAL ==================== -->
+            <div v-if="editingNote" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4 animate-fade-in" 
+                 @mousedown.self="startBackdropClick" 
+                 @click.self="confirmBackdropClick">
+                <div class="bg-white w-full max-w-4xl rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-slide-up">
+                    
+                    <!-- TOOLBAR -->
+                    <div class="flex items-center gap-1 p-2 border-b border-gray-100 bg-gray-50 text-notion-text shrink-0 overflow-x-auto no-scrollbar">
+                        <button @click="closeEditor" class="p-2 hover:bg-gray-200 rounded mr-2 flex-shrink-0" title="Close"><i class="ph ph-x text-lg"></i></button>
+                        
+                        <div class="h-6 w-px bg-gray-300 mx-1 flex-shrink-0"></div>
+
+                        <!-- Font Size -->
+                        <select @change="changeFontSize" class="bg-transparent text-xs border border-gray-200 rounded px-1 py-1 mr-1 focus:outline-none hover:bg-white cursor-pointer">
+                            <option value="3">Normal</option>
+                            <option value="1">Small</option>
+                            <option value="5">Large</option>
+                            <option value="7">Huge</option>
+                        </select>
+
+                        <!-- Copy/Paste Format -->
+                        <button @click="copyFormat" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0 relative" title="Copy Format" :class="{'text-blue-600 bg-blue-50': copiedStyle}">
+                            <i class="ph ph-paint-brush"></i>
+                            <span v-if="copiedStyle" class="absolute top-0 right-0 w-2 h-2 bg-blue-500 rounded-full border border-white"></span>
+                        </button>
+                        <button @click="pasteFormat" class="p-1.5 rounded flex-shrink-0" :class="copiedStyle ? 'hover:bg-blue-100 text-blue-700' : 'text-gray-300 cursor-not-allowed'" :disabled="!copiedStyle" title="Paste Format">
+                            <i class="ph ph-paint-roller"></i>
+                        </button>
+
+                        <div class="h-6 w-px bg-gray-300 mx-1 flex-shrink-0"></div>
+
+                        <button @click="execCmd('bold')" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0" title="Bold"><i class="ph ph-text-b"></i></button>
+                        <button @click="execCmd('italic')" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0" title="Italic"><i class="ph ph-text-italic"></i></button>
+                        <button @click="execCmd('underline')" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0" title="Underline"><i class="ph ph-text-underline"></i></button>
+                        <button @click="execCmd('strikeThrough')" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0" title="Strikethrough"><i class="ph ph-text-strikethrough"></i></button>
+                        
+                        <div class="h-6 w-px bg-gray-300 mx-1 flex-shrink-0"></div>
+
+                        <button @click="execCmd('formatBlock', 'H1')" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0" title="Heading 1"><i class="ph ph-text-h-one"></i></button>
+                        <button @click="execCmd('formatBlock', 'H2')" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0" title="Heading 2"><i class="ph ph-text-h-two"></i></button>
+                        <button @click="execCmd('insertUnorderedList')" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0" title="Bullet List"><i class="ph ph-list-bullets"></i></button>
+                        <button @click="execCmd('formatBlock', 'blockquote')" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0" title="Blockquote"><i class="ph ph-quotes"></i></button>
+                        <button @click="insertCheckbox" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0" title="Checkbox"><i class="ph ph-check-square"></i></button>
+
+                        <div class="h-6 w-px bg-gray-300 mx-1 flex-shrink-0"></div>
+                        
+                        <div class="flex gap-1 bg-white border border-gray-200 rounded p-0.5 flex-shrink-0">
+                            <button @click="execCmd('hiliteColor', '#FAEB8F')" class="p-1.5 hover:bg-yellow-100 rounded text-yellow-600" title="Highlight"><i class="ph ph-highlighter-circle text-lg"></i></button>
+                            <button @click="execCmd('hiliteColor', 'transparent')" class="p-1.5 hover:bg-gray-100 rounded text-gray-500" title="Remove Highlight"><i class="ph ph-eraser text-lg"></i></button>
                         </div>
+
                         <div class="flex-1"></div>
-                        <button @click="deleteCurrentNote" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"><i class="ph ph-trash text-lg"></i></button>
+                        <button @click="deleteCurrentNote" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded flex-shrink-0"><i class="ph ph-trash text-lg"></i></button>
                     </div>
+
                     <div class="px-8 pt-6 pb-2 shrink-0">
                         <div class="flex flex-wrap items-center gap-2 mb-2">
                             <i class="ph ph-tag text-gray-400"></i>
@@ -266,9 +405,19 @@
                         </div>
                         <div class="h-px w-full bg-gray-100 mt-2"></div>
                     </div>
+
                     <div class="flex-1 overflow-y-auto px-8 pb-8 pt-4 cursor-text" @click="$refs.editorRef.focus()">
-                        <div ref="editorRef" class="modal-editor outline-none text-notion-text" contenteditable="true" data-placeholder="Start typing your note..." v-safe-html="editingNote.content" @input="onEditorInput"></div>
+                        <div ref="editorRef" 
+                             class="modal-editor outline-none text-notion-text" 
+                             contenteditable="true" 
+                             data-placeholder="Start typing your note..." 
+                             v-safe-html="editingNote.content" 
+                             @input="onEditorInput"
+                             @click="handleEditorClick"
+                             @keydown="handleEditorKeydown">
+                        </div>
                     </div>
+
                     <div class="bg-gray-50 px-4 py-2 text-xs text-gray-400 border-t border-gray-100 flex justify-between shrink-0">
                         <span>Words: {{ wordCount }}</span>
                         <span>Last edited: {{ formatDateTime(editingNote.updatedAt) }}</span>
@@ -361,7 +510,7 @@
                 const showImportModal = ref(false);
                 const pendingImport = ref(null);
                 const importScope = ref({ notes: true, tasks: true });
-                const importMode = ref('merge'); // 'merge' or 'replace'
+                const importMode = ref('merge'); 
 
                 // TASK INPUTS
                 const newTaskInput = ref('');
@@ -377,6 +526,11 @@
                 const tagInput = ref('');
                 const tagInputRef = ref(null);
                 const editorRef = ref(null);
+                
+                // COPY FORMAT STATE
+                const copiedStyle = ref(null);
+                // MODAL BACKDROP STATE
+                const backdropClickStarted = ref(false);
 
                 const timeTrigger = ref(Date.now());
                 const TAG_REGEX = /#[\w\u4e00-\u9fa5]+/g;
@@ -411,7 +565,7 @@
                                 showImportModal.value = true;
                             } else { alert('Invalid backup file format.'); }
                         } catch (err) { alert('Error parsing file.'); }
-                        event.target.value = ''; // Reset input
+                        event.target.value = ''; 
                     };
                     reader.readAsText(file);
                 };
@@ -421,19 +575,16 @@
                     if (!pendingImport.value) return;
                     const source = pendingImport.value;
                     
-                    // Handle Notes
                     if (importScope.value.notes) {
                         if (importMode.value === 'replace') {
                             notes.value = source.notes || [];
                         } else {
-                            // Merge: Add only unique IDs
                             const existingIds = new Set(notes.value.map(n => n.id));
                             const newNotes = (source.notes || []).filter(n => !existingIds.has(n.id));
                             notes.value = [...notes.value, ...newNotes];
                         }
                     }
 
-                    // Handle Tasks
                     if (importScope.value.tasks) {
                         if (importMode.value === 'replace') {
                             tasks.value = source.tasks || [];
@@ -444,7 +595,6 @@
                         }
                     }
 
-                    // Handle Tags (Simplified: Merge unless replace ALL)
                     const isFullReplace = importMode.value === 'replace' && importScope.value.notes && importScope.value.tasks;
                     if (isFullReplace) {
                         tagOrder.value = source.tagOrder || [];
@@ -486,14 +636,114 @@
                 const deleteTask = (id) => { tasks.value = tasks.value.filter(t => t.id !== id); saveData(); };
                 
                 const sortedTags = computed(() => { const set = new Set(); notes.value.forEach(n => n.tags.forEach(t => set.add(t))); tasks.value.forEach(t => t.tags.forEach(t => set.add(t))); const map = new Map(); tagOrder.value.forEach((t, i) => map.set(t, i)); return Array.from(set).sort((a, b) => { const iA = map.has(a) ? map.get(a) : 9999; const iB = map.has(b) ? map.get(b) : 9999; return iA !== iB ? iA - iB : a.localeCompare(b); }); });
-                const filteredTasks = computed(() => { let res = tasks.value; if (activeTag.value) res = res.filter(t => t.tags.includes(activeTag.value)); if (searchQuery.value) res = res.filter(t => t.title.toLowerCase().includes(searchQuery.value.toLowerCase())); return res.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1)); });
+                const filteredTasks = computed(() => { 
+                    let res = tasks.value; 
+                    if (activeTag.value) res = res.filter(task => task.tags.includes(activeTag.value)); 
+                    if (searchQuery.value) res = res.filter(task => task.title.toLowerCase().includes(searchQuery.value.toLowerCase())); 
+                    return res.sort((a, b) => {
+                        if (a.completed !== b.completed) return a.completed ? 1 : -1;
+                        const dateA = new Date(a.dueDate).getTime();
+                        const dateB = new Date(b.dueDate).getTime();
+                        return dateA - dateB;
+                    }); 
+                });
                 const filteredNotes = computed(() => { let res = notes.value; if (activeTag.value) res = res.filter(n => n.tags.includes(activeTag.value)); if (searchQuery.value) { const q = searchQuery.value.toLowerCase(); res = res.filter(n => getPreviewText(n.content).toLowerCase().includes(q) || n.tags.some(t => t.toLowerCase().includes(q))); } return res; });
 
                 const openEditor = (n) => { if (n) { originalNoteId.value = n.id; editingNote.value = JSON.parse(JSON.stringify(n)); } else { originalNoteId.value = null; editingNote.value = { id: generateId(), content: '', tags: [], updatedAt: Date.now() }; } tagInput.value = ''; };
-                const closeEditor = () => { if (!editingNote.value) return; if (originalNoteId.value) { const idx = notes.value.findIndex(n => n.id === originalNoteId.value); if (idx !== -1) notes.value[idx] = editingNote.value; } else { if (editingNote.value.content.trim() || editingNote.value.tags.length > 0) notes.value.unshift(editingNote.value); } saveData(); editingNote.value = null; };
+                
+                // BACKDROP CLICK FIX
+                const startBackdropClick = () => { backdropClickStarted.value = true; };
+                const confirmBackdropClick = () => { 
+                    if (backdropClickStarted.value) closeEditor(); 
+                    backdropClickStarted.value = false; 
+                };
+
+                const closeEditor = () => { 
+                    if (!editingNote.value) return; 
+                    if (originalNoteId.value) { const idx = notes.value.findIndex(n => n.id === originalNoteId.value); if (idx !== -1) notes.value[idx] = editingNote.value; } else { if (editingNote.value.content.trim() || editingNote.value.tags.length > 0) notes.value.unshift(editingNote.value); } saveData(); editingNote.value = null; 
+                };
                 const onEditorInput = (e) => { editingNote.value.content = e.target.innerHTML; editingNote.value.updatedAt = Date.now(); saveData(); };
                 const deleteCurrentNote = () => { if (confirm('Delete?')) { if (originalNoteId.value) notes.value = notes.value.filter(n => n.id !== originalNoteId.value); saveData(); editingNote.value = null; }};
+                
+                // RICH TEXT COMMANDS
                 const execCmd = (c, v = null) => { document.execCommand(c, false, v); };
+                
+                const changeFontSize = (e) => { execCmd('fontSize', e.target.value); };
+                const insertCheckbox = () => { const html = '<input type="checkbox">&nbsp;'; execCmd('insertHTML', html); };
+                
+                // Handle manual clicks on checkboxes
+                const handleEditorClick = (e) => {
+                    if (e.target.tagName === 'INPUT' && e.target.type === 'checkbox') {
+                        if (e.target.hasAttribute('checked')) { e.target.removeAttribute('checked'); } else { e.target.setAttribute('checked', 'checked'); }
+                        onEditorInput({ target: editorRef.value });
+                    }
+                };
+
+                // SMART CHECKBOX LOGIC (Improved)
+                const handleEditorKeydown = (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        const sel = window.getSelection();
+                        if (!sel.rangeCount) return;
+                        
+                        let node = sel.anchorNode;
+                        if (node.nodeType === 3) node = node.parentNode;
+                        
+                        // Traverse up to find the direct child of the editor (the block)
+                        while (node && node.parentNode !== editorRef.value && node !== editorRef.value) {
+                            node = node.parentNode;
+                        }
+                        
+                        if (node && node.nodeType === 1 && node !== editorRef.value) {
+                            const checkbox = node.querySelector('input[type="checkbox"]');
+                            
+                            if (checkbox) {
+                                // Clone to check content length without the checkbox element itself
+                                const clone = node.cloneNode(true);
+                                const cloneCb = clone.querySelector('input[type="checkbox"]');
+                                if(cloneCb) cloneCb.remove();
+                                const textContent = clone.textContent.trim();
+                                
+                                if (textContent === '') {
+                                    // Case 2: Auto-Cancel (Empty line -> Remove checkbox)
+                                    e.preventDefault();
+                                    checkbox.remove();
+                                    onEditorInput({ target: editorRef.value });
+                                } else {
+                                    // Case 1: Auto-Continue (New line with checkbox)
+                                    setTimeout(() => {
+                                        document.execCommand('insertHTML', false, '<input type="checkbox">&nbsp;');
+                                        onEditorInput({ target: editorRef.value });
+                                    }, 0);
+                                }
+                            }
+                        }
+                    }
+                };
+
+                // COPY FORMAT LOGIC
+                const copyFormat = () => {
+                    copiedStyle.value = {
+                        bold: document.queryCommandState('bold'),
+                        italic: document.queryCommandState('italic'),
+                        underline: document.queryCommandState('underline'),
+                        strikethrough: document.queryCommandState('strikethrough'),
+                        foreColor: document.queryCommandValue('foreColor'),
+                        hiliteColor: document.queryCommandValue('hiliteColor'),
+                        fontSize: document.queryCommandValue('fontSize')
+                    };
+                };
+
+                const pasteFormat = () => {
+                    if(!copiedStyle.value) return;
+                    const s = copiedStyle.value;
+                    if(document.queryCommandState('bold') !== s.bold) execCmd('bold');
+                    if(document.queryCommandState('italic') !== s.italic) execCmd('italic');
+                    if(document.queryCommandState('underline') !== s.underline) execCmd('underline');
+                    if(document.queryCommandState('strikethrough') !== s.strikethrough) execCmd('strikeThrough');
+                    execCmd('foreColor', s.foreColor);
+                    execCmd('hiliteColor', s.hiliteColor);
+                    execCmd('fontSize', s.fontSize);
+                };
                 
                 const tagSuggestions = computed(() => { if (!tagInput.value) return []; return sortedTags.value.filter(t => t.toLowerCase().includes(tagInput.value.toLowerCase()) && !editingNote.value.tags.includes(t)); });
                 const addTag = () => { const v = tagInput.value.trim().replace(/^#/, ''); if (v && !editingNote.value.tags.includes(v)) editingNote.value.tags.push(v); tagInput.value = ''; };
@@ -512,10 +762,14 @@
                     newTaskInput, newTaskDue, taskError, detectedTags, addTask, toggleTask, deleteTask, getDueDateColor,
                     editingId, editTitle, editDue, startEdit, saveEdit, cancelEdit,
                     filteredTasks, filteredNotes, formatDateTime, formatRelativeTime, getPreviewText,
-                    editingNote, openEditor, closeEditor, onEditorInput, deleteCurrentNote, editorRef, execCmd, wordCount,
+                    editingNote, openEditor, closeEditor, onEditorInput, deleteCurrentNote, editorRef, 
+                    execCmd, changeFontSize, insertCheckbox, handleEditorClick, handleEditorKeydown, wordCount,
+                    // Format Painter
+                    copyFormat, pasteFormat, copiedStyle,
+                    // Backdrop Fix
+                    startBackdropClick, confirmBackdropClick,
                     tagInput, tagSuggestions, addTag, addSuggestedTag, removeTag, onTagBackspace, tagInputRef,
                     exportData, importData, fileInput,
-                    // Import Modal State
                     showImportModal, pendingImport, importScope, importMode, executeImport
                 };
             }
