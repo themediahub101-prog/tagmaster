@@ -3,16 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <!-- 防止 iOS 自動偵測電話號碼影響樣式 -->
     <meta name="format-detection" content="telephone=no">
-    <title>TagMaster Local v7.0</title>
+    <title>TagMaster v7.1</title>
     
     <!-- FAVICON & APPLE TOUCH ICON GENERATOR -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23F97316'/><path d='M30 35h40M30 55h40M30 75h25' stroke='white' stroke-width='8' stroke-linecap='round'/></svg>">
     <script>
         (function() {
             try {
-                // 動態繪製 Apple Touch Icon (橙色底 + 白色筆記)
                 var c = document.createElement('canvas'); c.width=180; c.height=180; var x = c.getContext('2d');
                 x.fillStyle='#F97316'; x.fillRect(0,0,180,180);
                 x.strokeStyle='#FFFFFF'; x.lineWidth=14; x.lineCap='round';
@@ -43,16 +41,12 @@
 
     <style>
         body { -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
-        
-        /* 自定義捲軸 */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
-        
         [contenteditable]:focus { outline: none; }
         
-        /* 編輯器樣式 */
         .modal-editor { min-height: 300px; max-height: 60vh; overflow-y: auto; line-height: 1.7; font-size: 1.05rem; }
         .modal-editor:empty:before { content: attr(data-placeholder); color: #9B9A97; pointer-events: none; display: block; }
         .modal-editor ul { list-style-type: disc; margin-left: 1.5em; }
@@ -62,28 +56,18 @@
         .modal-editor blockquote { border-left: 3px solid #E0E0E0; padding-left: 1em; color: #666; font-style: italic; }
         .modal-editor span[style*="background-color"] { border-radius: 4px; padding: 0 2px; }
 
-        /* 卡片預覽截斷 */
         .preview-text { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; white-space: pre-wrap; color: #4a4a4a; font-size: 0.875rem; line-height: 1.5; }
-        
-        /* 隱藏橫向捲軸 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* 錯誤搖晃動畫 */
         .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
 
-        /* iOS Safari 日期顯示修復 (核彈級強制設定) */
+        /* iOS Date Fix */
         input[type="date"], input[type="time"], input[type="datetime-local"] {
-            -webkit-appearance: none; 
-            appearance: none;
-            color: #37352F !important; 
-            -webkit-text-fill-color: #37352F !important;
-            opacity: 1 !important; 
-            background-color: white; 
-            min-height: 36px; 
-            padding-top: 6px; 
-            padding-bottom: 6px;
+            -webkit-appearance: none; appearance: none;
+            color: #37352F !important; -webkit-text-fill-color: #37352F !important;
+            opacity: 1 !important; background-color: white; min-height: 36px; padding-top: 6px; padding-bottom: 6px;
         }
     </style>
 </head>
@@ -91,18 +75,15 @@
 
     <div id="app" class="flex w-full h-full">
         
-        <!-- ==================== SIDEBAR ==================== -->
+        <!-- SIDEBAR -->
         <aside class="fixed inset-y-0 left-0 bg-notion-sidebar border-r border-notion-border flex flex-col transition-all duration-300 z-30 transform md:relative md:translate-x-0"
                :class="{'translate-x-0 w-64 shadow-xl md:shadow-none': sidebarOpen, '-translate-x-full w-64': !sidebarOpen}">
             
             <div class="p-4 flex items-center justify-between font-bold select-none text-notion-text">
                 <div class="flex items-center gap-2">
-                    <div class="w-6 h-6 bg-orange-500 text-white flex items-center justify-center rounded text-xs">
-                        <i class="ph-bold ph-note text-sm"></i>
-                    </div>
+                    <div class="w-6 h-6 bg-orange-500 text-white flex items-center justify-center rounded text-xs"><i class="ph-bold ph-note text-sm"></i></div>
                     <span>TagMaster</span>
                 </div>
-                <!-- Mobile Close Sidebar -->
                 <button @click="sidebarOpen = false" class="md:hidden text-notion-dim p-1"><i class="ph ph-caret-left"></i></button>
             </div>
 
@@ -129,182 +110,116 @@
                     </div>
                 </div>
                 
-                <div v-if="sortedTags.length === 0" class="px-3 text-xs text-notion-dim italic mt-2">
-                    Tags appear here.
-                </div>
+                <div v-if="sortedTags.length === 0" class="px-3 text-xs text-notion-dim italic mt-2">Tags appear here.</div>
             </div>
             
-            <!-- DATA MANAGEMENT FOOTER (Export/Import) -->
+            <!-- DATA MANAGEMENT FOOTER -->
             <div class="p-3 border-t border-gray-200 bg-gray-50/50">
                 <div class="flex items-center gap-1.5 text-[10px] text-gray-400 mb-2 px-1">
                     <i class="ph-bold ph-hard-drives"></i> Local Storage
                 </div>
                 <div class="flex gap-2">
-                    <!-- Export Button -->
-                    <button @click="exportData" class="flex-1 flex items-center justify-center gap-1 bg-white border border-gray-200 rounded py-1.5 text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm" title="Download Backup">
+                    <button @click="exportData" class="flex-1 flex items-center justify-center gap-1 bg-white border border-gray-200 rounded py-1.5 text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm">
                         <i class="ph ph-download-simple"></i> Export
                     </button>
-                    <!-- Import Button -->
-                    <button @click="$refs.fileInput.click()" class="flex-1 flex items-center justify-center gap-1 bg-white border border-gray-200 rounded py-1.5 text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm" title="Restore Backup">
+                    <button @click="$refs.fileInput.click()" class="flex-1 flex items-center justify-center gap-1 bg-white border border-gray-200 rounded py-1.5 text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm">
                         <i class="ph ph-upload-simple"></i> Import
                     </button>
-                    <!-- Hidden File Input -->
                     <input ref="fileInput" type="file" class="hidden" accept=".json" @change="importData">
                 </div>
             </div>
         </aside>
 
-        <!-- Sidebar Overlay for Mobile -->
         <div v-if="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 bg-black/20 z-20 md:hidden"></div>
 
-        <!-- ==================== MAIN CONTENT ==================== -->
+        <!-- MAIN CONTENT -->
         <main class="flex-1 flex flex-col h-full overflow-hidden bg-white relative w-full">
-            
-            <!-- Mobile Toggle -->
-            <button @click="sidebarOpen = !sidebarOpen" class="absolute top-4 left-4 z-10 text-notion-dim hover:text-notion-text p-1 rounded hover:bg-notion-hover md:hidden">
-                <i class="ph ph-list text-xl"></i>
-            </button>
+            <button @click="sidebarOpen = !sidebarOpen" class="absolute top-4 left-4 z-10 text-notion-dim hover:text-notion-text p-1 rounded hover:bg-notion-hover md:hidden"><i class="ph ph-list text-xl"></i></button>
 
-            <!-- Scrollable Area -->
             <div class="flex-1 overflow-y-auto w-full h-full scroll-smooth">
-                
                 <div class="w-full max-w-7xl mx-auto px-4 md:px-12 py-6 md:py-12">
-                
-                    <!-- 1. Header & Search -->
+                    
+                    <!-- Header -->
                     <header class="mb-8 mt-2 pl-8 md:pl-0 flex flex-col md:flex-row md:items-end justify-between gap-4">
                         <div class="flex-1">
                             <h1 class="text-3xl md:text-4xl font-bold mb-1 flex items-center gap-2">
                                 {{ activeTag ? '#' + activeTag : 'Dashboard' }}
-                                <button v-if="activeTag" @click="setFilter(null)" class="text-xs font-normal text-notion-dim bg-gray-100 px-2 py-1 rounded-full hover:bg-gray-200">
-                                    <i class="ph ph-x"></i> Clear
-                                </button>
+                                <button v-if="activeTag" @click="setFilter(null)" class="text-xs font-normal text-notion-dim bg-gray-100 px-2 py-1 rounded-full hover:bg-gray-200"><i class="ph ph-x"></i> Clear</button>
                             </h1>
-                            <p class="text-notion-dim text-sm">
-                                {{ activeTag ? 'Filtered view' : 'Overview' }}
-                            </p>
+                            <p class="text-notion-dim text-sm">{{ activeTag ? 'Filtered view' : 'Overview' }}</p>
                         </div>
-                        
-                        <!-- Search Bar -->
                         <div class="relative w-1/2 md:w-72 self-end">
                             <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
-                            <input 
-                                type="text" 
-                                v-model="searchQuery" 
-                                placeholder="Search" 
-                                class="w-full pl-9 pr-10 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
-                            >
+                            <input type="text" v-model="searchQuery" placeholder="Search" class="w-full pl-9 pr-10 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all">
                             <div v-if="searchQuery" class="absolute right-9 top-1 bottom-1 w-8 bg-gradient-to-l from-gray-50 to-transparent pointer-events-none z-10"></div>
-                            <button v-if="searchQuery" 
-                                    @click="searchQuery=''" 
-                                    class="absolute right-2 top-1/2 -translate-y-1/2 bg-gray-500 hover:bg-gray-600 text-white rounded-full w-5 h-5 flex items-center justify-center transition-colors shadow-sm z-20"
-                                    title="Clear search">
-                                <i class="ph-bold ph-x text-[10px]"></i>
-                            </button>
+                            <button v-if="searchQuery" @click="searchQuery=''" class="absolute right-2 top-1/2 -translate-y-1/2 bg-gray-500 hover:bg-gray-600 text-white rounded-full w-5 h-5 flex items-center justify-center transition-colors shadow-sm z-20"><i class="ph-bold ph-x text-[10px]"></i></button>
                         </div>
                     </header>
 
-                    <!-- 2. Tasks Section -->
+                    <!-- Tasks -->
                     <section class="mb-10">
                         <h2 class="text-xs font-bold text-notion-dim uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Tasks</h2>
-                        
-                        <!-- Add Task Input -->
-                        <div class="relative group mb-4 bg-white border border-gray-200 rounded-lg p-2 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all shadow-sm"
-                             :class="{'border-red-400 ring-2 ring-red-100 shake': taskError}">
+                        <div class="relative group mb-4 bg-white border border-gray-200 rounded-lg p-2 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all shadow-sm" :class="{'border-red-400 ring-2 ring-red-100 shake': taskError}">
                             <div class="flex flex-col md:flex-row gap-2">
                                 <div class="flex items-center gap-2 flex-1">
                                     <i class="ph ph-plus text-gray-400 ml-1"></i>
                                     <input type="text" v-model="newTaskInput" @keyup.enter="addTask" placeholder="Add task... (e.g. Buy milk #home)" class="flex-1 px-1 py-1 outline-none text-sm bg-transparent min-w-0">
                                 </div>
                                 <div class="flex items-center gap-2 border-t md:border-t-0 md:border-l border-gray-100 pt-2 md:pt-0 md:pl-2">
-                                    
-                                    <!-- iOS FIX applied -->
-                                    <input type="datetime-local" 
-                                           v-model="newTaskDue" 
-                                           style="color-scheme: light;"
-                                           class="flex-1 md:flex-none w-full md:w-auto text-xs text-gray-900 bg-white rounded px-2 outline-none border transition-colors font-mono"
-                                           :class="taskError ? 'border-red-500' : 'border-gray-300'">
-                                    
+                                    <input type="datetime-local" v-model="newTaskDue" style="color-scheme: light;" class="flex-1 md:flex-none w-full md:w-auto text-xs text-gray-900 bg-white rounded px-2 outline-none border transition-colors font-mono" :class="taskError ? 'border-red-500' : 'border-gray-300'">
                                     <button @click="addTask" class="h-9 px-4 bg-notion-text text-white rounded-md text-xs font-medium hover:opacity-90 whitespace-nowrap">Add</button>
                                 </div>
                             </div>
-                            <div v-if="detectedTags.length > 0" class="absolute -bottom-6 left-2 flex gap-1">
-                                <span v-for="tag in detectedTags" :key="tag" class="text-[10px] bg-blue-50 text-blue-600 px-1.5 rounded animate-pulse">#{{ tag }} will be added</span>
-                            </div>
-                             <div v-if="taskError" class="absolute -bottom-6 right-0 text-[10px] text-red-500 font-bold">
-                                * Due date required
-                            </div>
+                            <div v-if="detectedTags.length > 0" class="absolute -bottom-6 left-2 flex gap-1"><span v-for="tag in detectedTags" :key="tag" class="text-[10px] bg-blue-50 text-blue-600 px-1.5 rounded animate-pulse">#{{ tag }} will be added</span></div>
+                            <div v-if="taskError" class="absolute -bottom-6 right-0 text-[10px] text-red-500 font-bold">* Due date required</div>
                         </div>
 
-                        <!-- Task List -->
                         <div class="space-y-1">
                             <div v-for="task in filteredTasks" :key="task.id" class="p-2 hover:bg-notion-hover rounded group transition-colors duration-200">
-                                
-                                <!-- VIEW MODE -->
                                 <div v-if="editingId !== task.id" class="flex items-start gap-3">
-                                    <button @click="toggleTask(task)" class="mt-0.5 text-gray-400 hover:text-notion-blue transition-colors shrink-0">
-                                        <i class="ph text-xl" :class="task.completed ? 'ph-check-square text-notion-blue' : 'ph-square'"></i>
-                                    </button>
+                                    <button @click="toggleTask(task)" class="mt-0.5 text-gray-400 hover:text-notion-blue transition-colors shrink-0"><i class="ph text-xl" :class="task.completed ? 'ph-check-square text-notion-blue' : 'ph-square'"></i></button>
                                     <div class="flex-1 min-w-0">
-                                        <div class="text-sm break-words" :class="{'line-through text-notion-dim': task.completed}">
-                                            <span v-if="searchQuery" v-html="highlightText(task.title)"></span>
-                                            <span v-else>{{ task.title }}</span>
-                                        </div>
+                                        <div class="text-sm break-words" :class="{'line-through text-notion-dim': task.completed}"><span v-if="searchQuery" v-html="highlightText(task.title)"></span><span v-else>{{ task.title }}</span></div>
                                         <div class="flex flex-wrap items-center gap-2 mt-1">
                                             <span v-for="tag in task.tags" :key="tag" @click.stop="setFilter(tag)" class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded cursor-pointer hover:bg-gray-200">#{{ tag }}</span>
                                             <span v-if="task.dueDate" class="text-[10px] flex items-center gap-1 font-mono" :class="getDueDateColor(task)"><i class="ph ph-clock"></i> {{ formatDateTime(task.dueDate) }}</span>
                                         </div>
                                     </div>
                                     <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button @click="startEdit(task)" class="text-gray-400 hover:text-blue-500 p-1" title="Edit"><i class="ph ph-pencil-simple"></i></button>
-                                        <button @click="deleteTask(task.id)" class="text-gray-400 hover:text-red-500 p-1" title="Delete"><i class="ph ph-trash"></i></button>
+                                        <button @click="startEdit(task)" class="text-gray-400 hover:text-blue-500 p-1"><i class="ph ph-pencil-simple"></i></button>
+                                        <button @click="deleteTask(task.id)" class="text-gray-400 hover:text-red-500 p-1"><i class="ph ph-trash"></i></button>
                                     </div>
                                 </div>
-
-                                <!-- EDIT MODE -->
                                 <div v-else class="flex flex-col gap-2 bg-white border border-blue-200 rounded p-2 shadow-sm">
                                     <input type="text" v-model="editTitle" class="w-full text-sm outline-none border-b border-gray-200 pb-1" placeholder="Task title">
                                     <div class="flex items-center justify-between gap-2">
-                                        <input type="datetime-local" 
-                                               v-model="editDue" 
-                                               style="color-scheme: light;"
-                                               class="flex-1 text-xs text-gray-900 bg-white rounded px-2 py-1.5 border border-gray-200 h-8 font-mono">
-                                        
+                                        <input type="datetime-local" v-model="editDue" style="color-scheme: light;" class="flex-1 text-xs text-gray-900 bg-white rounded px-2 py-1.5 border border-gray-200 h-8 font-mono">
                                         <div class="flex gap-2">
                                             <button @click="saveEdit" class="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 h-8">Save</button>
                                             <button @click="cancelEdit" class="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 h-8">Cancel</button>
                                         </div>
                                     </div>
                                 </div>
-
                             </div>
                             <div v-if="filteredTasks.length === 0 && searchQuery" class="text-sm text-gray-400 italic px-2">No tasks matching search.</div>
                         </div>
                     </section>
 
-                    <!-- 3. Notes Section -->
+                    <!-- Notes -->
                     <section>
                         <div class="flex items-center justify-between mb-2">
                             <h2 class="text-xs font-bold text-notion-dim uppercase tracking-wider">Notes</h2>
-                            <button @click="openEditor(null)" class="flex items-center gap-1.5 text-xs font-medium text-notion-blue hover:bg-blue-50 px-3 py-1.5 rounded transition-colors">
-                                <i class="ph ph-plus-circle text-sm"></i> New Note
-                            </button>
+                            <button @click="openEditor(null)" class="flex items-center gap-1.5 text-xs font-medium text-notion-blue hover:bg-blue-50 px-3 py-1.5 rounded transition-colors"><i class="ph ph-plus-circle text-sm"></i> New Note</button>
                         </div>
-
-                        <!-- Horizontal Tag Filter -->
                         <div class="flex gap-2 overflow-x-auto no-scrollbar py-2 mb-4">
                             <button @click="setFilter(null)" class="whitespace-nowrap px-3 py-1 rounded-full text-xs border transition-colors" :class="activeTag === null ? 'bg-gray-800 text-white border-gray-800' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'">All</button>
                             <button v-for="tag in sortedTags" :key="tag" @click="setFilter(tag)" class="whitespace-nowrap px-3 py-1 rounded-full text-xs border transition-colors" :class="activeTag === tag ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:border-blue-300'">#{{ tag }}</button>
                         </div>
-
-                        <div v-if="filteredNotes.length === 0" class="text-center py-10 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                            <p class="text-sm text-gray-400">{{ searchQuery ? 'No notes found matching query.' : 'No notes here.' }}</p>
-                        </div>
-
-                        <!-- Masonry Layout -->
+                        <div v-if="filteredNotes.length === 0" class="text-center py-10 bg-gray-50 rounded-lg border border-dashed border-gray-200"><p class="text-sm text-gray-400">{{ searchQuery ? 'No notes found.' : 'No notes here.' }}</p></div>
                         <div class="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4">
                             <div v-for="note in filteredNotes" :key="note.id" @click="openEditor(note)" class="break-inside-avoid bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer transition-all hover:-translate-y-0.5 group flex flex-col relative overflow-hidden">
                                 <div class="mb-3 max-h-32 overflow-hidden relative">
-                                    <div v-if="!note.content" class="text-gray-300 italic text-sm">Empty note...</div>
+                                    <div v-if="!note.content" class="text-gray-300 italic text-sm">Empty...</div>
                                     <div v-else class="preview-text">{{ getPreviewText(note.content) }}</div>
                                     <div class="absolute bottom-0 left-0 w-full h-6 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
                                 </div>
@@ -315,12 +230,11 @@
                             </div>
                         </div>
                     </section>
-                    
                     <div class="h-24"></div>
                 </div>
             </div>
 
-            <!-- ==================== EDITOR MODAL ==================== -->
+            <!-- Editor Modal -->
             <div v-if="editingNote" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4 animate-fade-in" @click.self="closeEditor">
                 <div class="bg-white w-full max-w-3xl rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-slide-up">
                     <div class="flex items-center gap-1 p-2 border-b border-gray-100 bg-gray-50 text-notion-text shrink-0">
@@ -339,7 +253,6 @@
                         <div class="flex-1"></div>
                         <button @click="deleteCurrentNote" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"><i class="ph ph-trash text-lg"></i></button>
                     </div>
-
                     <div class="px-8 pt-6 pb-2 shrink-0">
                         <div class="flex flex-wrap items-center gap-2 mb-2">
                             <i class="ph ph-tag text-gray-400"></i>
@@ -353,14 +266,72 @@
                         </div>
                         <div class="h-px w-full bg-gray-100 mt-2"></div>
                     </div>
-
                     <div class="flex-1 overflow-y-auto px-8 pb-8 pt-4 cursor-text" @click="$refs.editorRef.focus()">
                         <div ref="editorRef" class="modal-editor outline-none text-notion-text" contenteditable="true" data-placeholder="Start typing your note..." v-safe-html="editingNote.content" @input="onEditorInput"></div>
                     </div>
-
                     <div class="bg-gray-50 px-4 py-2 text-xs text-gray-400 border-t border-gray-100 flex justify-between shrink-0">
                         <span>Words: {{ wordCount }}</span>
                         <span>Last edited: {{ formatDateTime(editingNote.updatedAt) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- IMPORT OPTIONS MODAL -->
+            <div v-if="showImportModal && pendingImport" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in" @click.self="showImportModal = false">
+                <div class="bg-white w-full max-w-sm rounded-xl shadow-2xl overflow-hidden animate-slide-up">
+                    <div class="bg-gray-50 px-5 py-3 border-b border-gray-100">
+                        <h3 class="font-bold text-notion-text flex items-center gap-2"><i class="ph-bold ph-download-simple"></i> Import Data</h3>
+                    </div>
+                    
+                    <div class="p-5 space-y-5">
+                        <div class="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                            Found in backup:
+                            <ul class="list-disc pl-5 mt-1 font-medium text-notion-text">
+                                <li>{{ (pendingImport.notes || []).length }} Notes</li>
+                                <li>{{ (pendingImport.tasks || []).length }} Tasks</li>
+                            </ul>
+                        </div>
+
+                        <!-- Scope Selection -->
+                        <div>
+                            <label class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2">Import Items</label>
+                            <div class="space-y-2">
+                                <label class="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded -mx-2">
+                                    <input type="checkbox" v-model="importScope.notes" class="rounded text-blue-600 focus:ring-blue-500">
+                                    <span class="text-sm">Notes</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded -mx-2">
+                                    <input type="checkbox" v-model="importScope.tasks" class="rounded text-blue-600 focus:ring-blue-500">
+                                    <span class="text-sm">Tasks</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Mode Selection -->
+                        <div>
+                            <label class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2">Method</label>
+                            <div class="flex gap-2">
+                                <label class="flex-1 cursor-pointer">
+                                    <input type="radio" v-model="importMode" value="merge" class="hidden peer">
+                                    <div class="border border-gray-200 rounded-lg p-3 text-center peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:text-blue-700 hover:bg-gray-50 transition-all">
+                                        <div class="font-bold text-sm mb-0.5">Merge</div>
+                                        <div class="text-[10px] opacity-70">Add new items</div>
+                                    </div>
+                                </label>
+                                <label class="flex-1 cursor-pointer">
+                                    <input type="radio" v-model="importMode" value="replace" class="hidden peer">
+                                    <div class="border border-gray-200 rounded-lg p-3 text-center peer-checked:border-red-500 peer-checked:bg-red-50 peer-checked:text-red-700 hover:bg-gray-50 transition-all">
+                                        <div class="font-bold text-sm mb-0.5">Replace</div>
+                                        <div class="text-[10px] opacity-70">Overwrite all</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 px-5 py-3 border-t border-gray-100 flex justify-end gap-3">
+                        <button @click="showImportModal = false" class="text-sm text-gray-500 hover:text-gray-800 font-medium px-2">Cancel</button>
+                        <button @click="executeImport" class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors">Confirm</button>
                     </div>
                 </div>
             </div>
@@ -386,6 +357,12 @@
                 const tasks = ref(storedData.tasks || []);
                 const tagOrder = ref(storedData.tagOrder || []);
                 
+                // IMPORT MODAL STATE
+                const showImportModal = ref(false);
+                const pendingImport = ref(null);
+                const importScope = ref({ notes: true, tasks: true });
+                const importMode = ref('merge'); // 'merge' or 'replace'
+
                 // TASK INPUTS
                 const newTaskInput = ref('');
                 const newTaskDue = ref('');
@@ -421,7 +398,7 @@
                     URL.revokeObjectURL(url);
                 };
 
-                // IMPORT
+                // IMPORT TRIGGER
                 const importData = (event) => {
                     const file = event.target.files[0];
                     if (!file) return;
@@ -429,19 +406,58 @@
                     reader.onload = (e) => {
                         try {
                             const json = JSON.parse(e.target.result);
-                            if (Array.isArray(json.notes) && Array.isArray(json.tasks)) {
-                                if(confirm(`Found ${json.notes.length} notes and ${json.tasks.length} tasks. Replace current data?`)) {
-                                    notes.value = json.notes;
-                                    tasks.value = json.tasks;
-                                    tagOrder.value = json.tagOrder || [];
-                                    saveData();
-                                    alert('Import successful!');
-                                }
+                            if (Array.isArray(json.notes) || Array.isArray(json.tasks)) {
+                                pendingImport.value = json;
+                                showImportModal.value = true;
                             } else { alert('Invalid backup file format.'); }
                         } catch (err) { alert('Error parsing file.'); }
-                        event.target.value = '';
+                        event.target.value = ''; // Reset input
                     };
                     reader.readAsText(file);
+                };
+
+                // EXECUTE IMPORT
+                const executeImport = () => {
+                    if (!pendingImport.value) return;
+                    const source = pendingImport.value;
+                    
+                    // Handle Notes
+                    if (importScope.value.notes) {
+                        if (importMode.value === 'replace') {
+                            notes.value = source.notes || [];
+                        } else {
+                            // Merge: Add only unique IDs
+                            const existingIds = new Set(notes.value.map(n => n.id));
+                            const newNotes = (source.notes || []).filter(n => !existingIds.has(n.id));
+                            notes.value = [...notes.value, ...newNotes];
+                        }
+                    }
+
+                    // Handle Tasks
+                    if (importScope.value.tasks) {
+                        if (importMode.value === 'replace') {
+                            tasks.value = source.tasks || [];
+                        } else {
+                            const existingIds = new Set(tasks.value.map(t => t.id));
+                            const newTasks = (source.tasks || []).filter(t => !existingIds.has(t.id));
+                            tasks.value = [...tasks.value, ...newTasks];
+                        }
+                    }
+
+                    // Handle Tags (Simplified: Merge unless replace ALL)
+                    const isFullReplace = importMode.value === 'replace' && importScope.value.notes && importScope.value.tasks;
+                    if (isFullReplace) {
+                        tagOrder.value = source.tagOrder || [];
+                    } else {
+                        const newTags = source.tagOrder || [];
+                        const currentTags = new Set(tagOrder.value);
+                        newTags.forEach(t => { if (!currentTags.has(t)) tagOrder.value.push(t); });
+                    }
+
+                    saveData();
+                    showImportModal.value = false;
+                    pendingImport.value = null;
+                    alert('Import successful!');
                 };
 
                 // HELPERS
@@ -498,7 +514,9 @@
                     filteredTasks, filteredNotes, formatDateTime, formatRelativeTime, getPreviewText,
                     editingNote, openEditor, closeEditor, onEditorInput, deleteCurrentNote, editorRef, execCmd, wordCount,
                     tagInput, tagSuggestions, addTag, addSuggestedTag, removeTag, onTagBackspace, tagInputRef,
-                    exportData, importData, fileInput
+                    exportData, importData, fileInput,
+                    // Import Modal State
+                    showImportModal, pendingImport, importScope, importMode, executeImport
                 };
             }
         });
