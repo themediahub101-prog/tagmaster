@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="format-detection" content="telephone=no">
-    <title>TagMaster v7.7</title>
+    <title>TagMaster v7.9</title>
     
     <!-- FAVICON -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23F97316'/><path d='M30 35h40M30 55h40M30 75h25' stroke='white' stroke-width='8' stroke-linecap='round'/></svg>">
@@ -49,7 +49,6 @@
         
         .modal-editor { min-height: 300px; max-height: 60vh; overflow-y: auto; line-height: 1.7; font-size: 1.05rem; }
         .modal-editor:empty:before { content: attr(data-placeholder); color: #9B9A97; pointer-events: none; display: block; }
-        
         .modal-editor ul { list-style-type: disc; margin-left: 1.5em; }
         .modal-editor ol { list-style-type: decimal; margin-left: 1.5em; }
         .modal-editor h1 { font-size: 1.8em; font-weight: 700; margin-top: 0.8em; margin-bottom: 0.4em; }
@@ -57,7 +56,6 @@
         .modal-editor blockquote { border-left: 4px solid #E0E0E0; padding-left: 1em; color: #666; font-style: italic; margin: 0.5em 0; }
         .modal-editor span[style*="background-color"] { border-radius: 4px; padding: 0 2px; }
         
-        /* Checkbox Style */
         .modal-editor input[type="checkbox"] {
             appearance: none; -webkit-appearance: none;
             width: 1.1em; height: 1.1em;
@@ -93,7 +91,7 @@
             <div class="p-4 flex items-center justify-between font-bold select-none text-notion-text">
                 <div class="flex items-center gap-2">
                     <div class="w-6 h-6 bg-orange-500 text-white flex items-center justify-center rounded text-xs"><i class="ph-bold ph-note text-sm"></i></div>
-                    <span>TagMaster</span>
+                    <span>TagMaster v7.9</span>
                 </div>
                 <button @click="sidebarOpen = false" class="md:hidden text-notion-dim p-1"><i class="ph ph-caret-left"></i></button>
             </div>
@@ -123,7 +121,14 @@
             <div class="flex-1 overflow-y-auto w-full h-full scroll-smooth">
                 <div class="w-full max-w-7xl mx-auto px-4 md:px-12 py-6 md:py-12">
                     <header class="mb-8 mt-2 pl-8 md:pl-0 flex flex-col md:flex-row md:items-end justify-between gap-4">
-                        <div class="flex-1"><h1 class="text-3xl md:text-4xl font-bold mb-1 flex items-center gap-2">{{ activeTag ? '#' + activeTag : 'Dashboard' }} <button v-if="activeTag" @click="setFilter(null)" class="text-xs font-normal text-notion-dim bg-gray-100 px-2 py-1 rounded-full hover:bg-gray-200"><i class="ph ph-x"></i> Clear</button></h1><p class="text-notion-dim text-sm">{{ activeTag ? 'Filtered view' : 'Overview' }}</p></div>
+                        <div class="flex-1">
+                            <h1 class="text-3xl md:text-4xl font-bold mb-1 flex items-center gap-2 group">
+                                {{ activeTag ? '#' + activeTag : 'Dashboard' }}
+                                <button v-if="activeTag" @click="openRenameModal" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-500 transition-opacity p-1"><i class="ph ph-pencil-simple"></i></button>
+                                <button v-if="activeTag" @click="setFilter(null)" class="text-xs font-normal text-notion-dim bg-gray-100 px-2 py-1 rounded-full hover:bg-gray-200"><i class="ph ph-x"></i> Clear</button>
+                            </h1>
+                            <p class="text-notion-dim text-sm">{{ activeTag ? 'Filtered view' : 'Overview' }}</p>
+                        </div>
                         <div class="relative w-1/2 md:w-72 self-end"><i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i><input type="text" v-model="searchQuery" placeholder="Search" class="w-full pl-9 pr-10 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"><div v-if="searchQuery" class="absolute right-9 top-1 bottom-1 w-8 bg-gradient-to-l from-gray-50 to-transparent pointer-events-none z-10"></div><button v-if="searchQuery" @click="searchQuery=''" class="absolute right-2 top-1/2 -translate-y-1/2 bg-gray-500 hover:bg-gray-600 text-white rounded-full w-5 h-5 flex items-center justify-center transition-colors shadow-sm z-20"><i class="ph-bold ph-x text-[10px]"></i></button></div>
                     </header>
 
@@ -136,7 +141,17 @@
                         <div class="space-y-1">
                             <div v-for="task in filteredTasks" :key="task.id" class="p-2 hover:bg-notion-hover rounded group transition-colors duration-200">
                                 <div v-if="editingId !== task.id" class="flex items-start gap-3"><button @click="toggleTask(task)" class="mt-0.5 text-gray-400 hover:text-notion-blue transition-colors shrink-0"><i class="ph text-xl" :class="task.completed ? 'ph-check-square text-notion-blue' : 'ph-square'"></i></button><div class="flex-1 min-w-0"><div class="text-sm break-words" :class="{'line-through text-notion-dim': task.completed}"><span v-if="searchQuery" v-html="highlightText(task.title)"></span><span v-else>{{ task.title }}</span></div><div class="flex flex-wrap items-center gap-2 mt-1"><span v-for="tag in task.tags" :key="tag" @click.stop="setFilter(tag)" class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded cursor-pointer hover:bg-gray-200">#{{ tag }}</span><span v-if="task.dueDate" class="text-[10px] flex items-center gap-1 font-mono" :class="getDueDateColor(task)"><i class="ph ph-clock"></i> {{ formatDateTime(task.dueDate) }}</span></div></div><div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><button @click="startEdit(task)" class="text-gray-400 hover:text-blue-500 p-1"><i class="ph ph-pencil-simple"></i></button><button @click="deleteTask(task.id)" class="text-gray-400 hover:text-red-500 p-1"><i class="ph ph-trash"></i></button></div></div>
-                                <div v-else class="flex flex-col gap-2 bg-white border border-blue-200 rounded p-2 shadow-sm"><input type="text" v-model="editTitle" class="w-full text-sm outline-none border-b border-gray-200 pb-1" placeholder="Task title"><div class="flex items-center justify-between gap-2"><input type="datetime-local" v-model="editDue" style="color-scheme: light;" class="flex-1 text-xs text-gray-900 bg-white rounded px-2 py-1.5 border border-gray-200 h-8 font-mono"><div class="flex gap-2"><button @click="saveEdit" class="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 h-8">Save</button><button @click="cancelEdit" class="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 h-8">Cancel</button></div></div></div>
+                                <div v-else class="flex flex-col gap-2 bg-white border border-blue-200 rounded p-2 shadow-sm">
+                                    <input type="text" v-model="editTitle" class="w-full text-sm outline-none border-b border-gray-200 pb-1 font-medium" placeholder="Task title">
+                                    <div class="flex items-center gap-2">
+                                        <i class="ph ph-tag text-gray-400 text-xs"></i>
+                                        <input type="text" v-model="editTagsString" class="flex-1 text-xs text-blue-600 outline-none bg-blue-50/50 rounded px-1" placeholder="#tag1 #tag2">
+                                    </div>
+                                    <div class="flex items-center justify-between gap-2 mt-1">
+                                        <input type="datetime-local" v-model="editDue" style="color-scheme: light;" class="flex-1 text-xs text-gray-900 bg-white rounded px-2 py-1.5 border border-gray-200 h-8 font-mono">
+                                        <div class="flex gap-2"><button @click="saveEdit" class="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 h-8">Save</button><button @click="cancelEdit" class="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 h-8">Cancel</button></div>
+                                    </div>
+                                </div>
                             </div>
                             <div v-if="filteredTasks.length === 0 && searchQuery" class="text-sm text-gray-400 italic px-2">No tasks matching search.</div>
                         </div>
@@ -198,6 +213,24 @@
                     <div class="bg-gray-50 px-5 py-3 border-t border-gray-100 flex justify-end gap-3"><button @click="showImportModal = false" class="text-sm text-gray-500 hover:text-gray-800 font-medium px-2">Cancel</button><button @click="executeImport" class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors">Confirm</button></div>
                 </div>
             </div>
+
+            <!-- RENAME TAG MODAL -->
+            <div v-if="showRenameModal" 
+                 class="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in" 
+                 @mousedown.self="startBackdropClick" 
+                 @click.self="confirmRenameBackdropClick">
+                <div class="bg-white w-full max-w-xs rounded-xl shadow-xl overflow-hidden animate-slide-up">
+                    <div class="p-4">
+                        <h3 class="font-bold text-gray-800 mb-3 text-sm">Rename Tag</h3>
+                        <input type="text" v-model="renameInput" @keyup.enter="confirmRename" class="w-full border border-gray-300 rounded px-2 py-2 text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none" placeholder="New tag name">
+                        <div class="flex justify-end gap-2 mt-4">
+                            <button @click="showRenameModal = false" class="text-xs text-gray-500 hover:text-gray-800 font-medium px-2 py-1">Cancel</button>
+                            <button @click="confirmRename" class="text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
 
@@ -218,9 +251,13 @@
                 const newTaskInput = ref('');
                 const newTaskDue = ref('');
                 const taskError = ref(false);
+                
+                // Edit Task State
                 const editingId = ref(null);
                 const editTitle = ref('');
                 const editDue = ref('');
+                const editTagsString = ref('');
+
                 const editingNote = ref(null);
                 const originalNoteId = ref(null);
                 const tagInput = ref('');
@@ -234,6 +271,10 @@
                 const pendingImport = ref(null);
                 const importScope = ref({ notes: true, tasks: true });
                 const importMode = ref('merge');
+                
+                // Rename Tag State
+                const showRenameModal = ref(false);
+                const renameInput = ref('');
 
                 const saveData = () => { localStorage.setItem('tagmaster-local', JSON.stringify({ notes: notes.value, tasks: tasks.value, tagOrder: tagOrder.value })); };
                 const exportData = () => { const dataStr = JSON.stringify({ notes: notes.value, tasks: tasks.value, tagOrder: tagOrder.value, exportedAt: new Date().toISOString() }, null, 2); const blob = new Blob([dataStr], {type: "application/json"}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `tagmaster-backup-${new Date().toISOString().split('T')[0]}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); };
@@ -249,47 +290,163 @@
                 const getDueDateColor = (task) => { if (task.completed) return 'text-gray-400'; return new Date(task.dueDate).getTime() < timeTrigger.value ? 'text-notion-red font-bold' : 'text-gray-400'; };
                 const detectedTags = computed(() => parseTags(newTaskInput.value));
                 const addTask = () => { if (!newTaskInput.value.trim()) return; if (!newTaskDue.value) { taskError.value = true; setTimeout(() => taskError.value = false, 2000); return; } const cleanTitle = newTaskInput.value.replace(TAG_REGEX, '').replace(/\s+/g, ' ').trim(); tasks.value.push({ id: generateId(), title: cleanTitle || "Untitled", completed: false, dueDate: newTaskDue.value, tags: parseTags(newTaskInput.value) }); newTaskInput.value = ''; newTaskDue.value = ''; taskError.value = false; saveData(); };
-                const startEdit = (t) => { editingId.value = t.id; editTitle.value = t.title; editDue.value = t.dueDate; };
-                const saveEdit = () => { const t = tasks.value.find(x => x.id === editingId.value); if(t && editTitle.value.trim() && editDue.value){ t.title = editTitle.value; t.dueDate = editDue.value; saveData(); } editingId.value = null; };
+                
+                // Enhanced Task Edit
+                const startEdit = (t) => { 
+                    editingId.value = t.id; 
+                    editTitle.value = t.title; 
+                    editDue.value = t.dueDate;
+                    // Pre-fill tags string for editing
+                    editTagsString.value = t.tags.map(tag => '#' + tag).join(' ');
+                };
+                
+                const saveEdit = () => { 
+                    const t = tasks.value.find(x => x.id === editingId.value); 
+                    if(t && editTitle.value.trim() && editDue.value){ 
+                        t.title = editTitle.value; 
+                        t.dueDate = editDue.value;
+                        // Parse new tags
+                        const newTags = parseTags(editTagsString.value);
+                        t.tags = newTags.length > 0 ? newTags : []; // Update tags
+                        saveData(); 
+                    } 
+                    editingId.value = null; 
+                };
                 const cancelEdit = () => { editingId.value = null; };
                 const toggleTask = (t) => { t.completed = !t.completed; saveData(); };
                 const deleteTask = (id) => { tasks.value = tasks.value.filter(t => t.id !== id); saveData(); };
-                const sortedTags = computed(() => { const set = new Set(); notes.value.forEach(n => n.tags.forEach(t => set.add(t))); tasks.value.forEach(t => t.tags.forEach(t => set.add(t))); const map = new Map(); tagOrder.value.forEach((t, i) => map.set(t, i)); return Array.from(set).sort((a, b) => { const iA = map.has(a) ? map.get(a) : 9999; const iB = map.has(b) ? map.get(b) : 9999; return iA !== iB ? iA - iB : a.localeCompare(b); }); });
-                const filteredTasks = computed(() => { let res = tasks.value; if (activeTag.value) res = res.filter(task => task.tags.includes(activeTag.value)); if (searchQuery.value) res = res.filter(task => task.title.toLowerCase().includes(searchQuery.value.toLowerCase())); return res.sort((a, b) => { if (a.completed !== b.completed) return a.completed ? 1 : -1; const dateA = new Date(a.dueDate).getTime(); const dateB = new Date(b.dueDate).getTime(); return dateA - dateB; }); });
-                const filteredNotes = computed(() => { let res = notes.value; if (activeTag.value) res = res.filter(n => n.tags.includes(activeTag.value)); if (searchQuery.value) { const q = searchQuery.value.toLowerCase(); res = res.filter(n => getPreviewText(n.content).toLowerCase().includes(q) || n.tags.some(t => t.toLowerCase().includes(q))); } return res; });
+                
+                // === TAG SYSTEM ENHANCEMENTS ===
+                const sortedTags = computed(() => {
+                    const rawTags = [];
+                    // Collect all tags but preserve their original casing first
+                    // We need a canonical map: lowercase key -> display value
+                    const canonicalMap = new Map();
+                    
+                    // Priority 1: Existing Tag Order (User preference)
+                    tagOrder.value.forEach(t => {
+                        if (!canonicalMap.has(t.toLowerCase())) canonicalMap.set(t.toLowerCase(), t);
+                    });
+                    
+                    // Priority 2: Notes & Tasks (Discovery)
+                    const scan = (list) => {
+                        list.forEach(item => {
+                            item.tags.forEach(t => {
+                                if (!canonicalMap.has(t.toLowerCase())) canonicalMap.set(t.toLowerCase(), t);
+                            });
+                        });
+                    };
+                    scan(notes.value);
+                    scan(tasks.value);
+                    
+                    // Build result list
+                    const result = Array.from(canonicalMap.values());
+                    
+                    // Sort based on tagOrder, then alphabetical
+                    const orderMap = new Map();
+                    tagOrder.value.forEach((t, i) => orderMap.set(t.toLowerCase(), i));
+                    
+                    return result.sort((a, b) => {
+                        const iA = orderMap.has(a.toLowerCase()) ? orderMap.get(a.toLowerCase()) : 9999;
+                        const iB = orderMap.has(b.toLowerCase()) ? orderMap.get(b.toLowerCase()) : 9999;
+                        return iA !== iB ? iA - iB : a.localeCompare(b);
+                    });
+                });
+
+                // Filter Logic: Case Insensitive
+                const filteredTasks = computed(() => { 
+                    let res = tasks.value; 
+                    if (activeTag.value) {
+                        const filterLower = activeTag.value.toLowerCase();
+                        res = res.filter(task => task.tags.some(t => t.toLowerCase() === filterLower)); 
+                    }
+                    if (searchQuery.value) res = res.filter(task => task.title.toLowerCase().includes(searchQuery.value.toLowerCase())); 
+                    return res.sort((a, b) => { if (a.completed !== b.completed) return a.completed ? 1 : -1; const dateA = new Date(a.dueDate).getTime(); const dateB = new Date(b.dueDate).getTime(); return dateA - dateB; }); 
+                });
+                
+                const filteredNotes = computed(() => { 
+                    let res = notes.value; 
+                    if (activeTag.value) {
+                        const filterLower = activeTag.value.toLowerCase();
+                        res = res.filter(n => n.tags.some(t => t.toLowerCase() === filterLower)); 
+                    }
+                    if (searchQuery.value) { const q = searchQuery.value.toLowerCase(); res = res.filter(n => getPreviewText(n.content).toLowerCase().includes(q) || n.tags.some(t => t.toLowerCase().includes(q))); } return res; 
+                });
+
+                // Rename Tag Logic
+                const openRenameModal = () => {
+                    renameInput.value = activeTag.value;
+                    showRenameModal.value = true;
+                };
+
+                const confirmRename = () => {
+                    if (!renameInput.value.trim() || renameInput.value === activeTag.value) {
+                        showRenameModal.value = false;
+                        return;
+                    }
+                    const oldLower = activeTag.value.toLowerCase();
+                    const newTag = renameInput.value.trim();
+                    
+                    // Update Notes
+                    notes.value.forEach(note => {
+                        if (note.tags.some(t => t.toLowerCase() === oldLower)) {
+                            note.tags = note.tags.map(t => t.toLowerCase() === oldLower ? newTag : t);
+                            // Dedupe
+                            note.tags = [...new Set(note.tags)];
+                        }
+                    });
+                    
+                    // Update Tasks
+                    tasks.value.forEach(task => {
+                        if (task.tags.some(t => t.toLowerCase() === oldLower)) {
+                            task.tags = task.tags.map(t => t.toLowerCase() === oldLower ? newTag : t);
+                            task.tags = [...new Set(task.tags)];
+                        }
+                    });
+                    
+                    // Update Tag Order List
+                    const orderIdx = tagOrder.value.findIndex(t => t.toLowerCase() === oldLower);
+                    if (orderIdx !== -1) {
+                        tagOrder.value[orderIdx] = newTag;
+                    }
+                    
+                    activeTag.value = newTag;
+                    saveData();
+                    showRenameModal.value = false;
+                };
+
                 const openEditor = (n) => { if (n) { originalNoteId.value = n.id; editingNote.value = JSON.parse(JSON.stringify(n)); } else { originalNoteId.value = null; editingNote.value = { id: generateId(), content: '', tags: [], updatedAt: Date.now() }; } tagInput.value = ''; };
+                
+                // BACKDROP CLICK FIX
                 const startBackdropClick = () => { backdropClickStarted.value = true; };
                 const confirmBackdropClick = () => { if (backdropClickStarted.value) closeEditor(); backdropClickStarted.value = false; };
+                
+                // FIX: Rename Modal Backdrop Click Logic
+                const confirmRenameBackdropClick = () => {
+                    if (backdropClickStarted.value) {
+                        showRenameModal.value = false;
+                    }
+                    backdropClickStarted.value = false;
+                };
+
                 const closeEditor = () => { if (!editingNote.value) return; if (originalNoteId.value) { const idx = notes.value.findIndex(n => n.id === originalNoteId.value); if (idx !== -1) notes.value[idx] = editingNote.value; } else { if (editingNote.value.content.trim() || editingNote.value.tags.length > 0) notes.value.unshift(editingNote.value); } saveData(); editingNote.value = null; };
                 const onEditorInput = (e) => { editingNote.value.content = e.target.innerHTML; editingNote.value.updatedAt = Date.now(); saveData(); };
                 const deleteCurrentNote = () => { if (confirm('Delete?')) { if (originalNoteId.value) notes.value = notes.value.filter(n => n.id !== originalNoteId.value); saveData(); editingNote.value = null; }};
                 const execCmd = (c, v = null) => { document.execCommand(c, false, v); };
                 const changeFontSize = (e) => { execCmd('fontSize', e.target.value); };
                 
-                // === NEW INSERT CHECKBOX LOGIC (Multi-line + Selection Support) ===
                 const insertCheckbox = () => {
                     const sel = window.getSelection();
                     if (!sel.rangeCount) return;
                     const range = sel.getRangeAt(0);
-                    
-                    if (sel.isCollapsed) {
-                        // Single cursor -> simple insert
-                        document.execCommand('insertHTML', false, '<input type="checkbox">&nbsp;');
-                    } else {
-                        // Multi-line selection -> Wrap blocks
+                    if (sel.isCollapsed) { document.execCommand('insertHTML', false, '<input type="checkbox">&nbsp;'); } 
+                    else {
                         const frag = range.extractContents();
                         const tempDiv = document.createElement('div');
                         tempDiv.appendChild(frag);
-                        
-                        // Heuristic: If it has divs/p, prepend to them. If plain text, wrap it.
                         let html = tempDiv.innerHTML;
-                        if (html.includes('<div') || html.includes('<p')) {
-                            // Regex to prepend checkbox to opening block tags
-                            html = html.replace(/<(div|p)([^>]*)>/gi, '<$1$2><input type="checkbox">&nbsp;');
-                        } else {
-                            // Just text -> Wrap in div with checkbox
-                            html = `<div><input type="checkbox">&nbsp;${html}</div>`;
-                        }
+                        if (html.includes('<div') || html.includes('<p')) { html = html.replace(/<(div|p)([^>]*)>/gi, '<$1$2><input type="checkbox">&nbsp;'); } 
+                        else { html = `<div><input type="checkbox">&nbsp;${html}</div>`; }
                         document.execCommand('insertHTML', false, html);
                     }
                     onEditorInput({ target: editorRef.value });
@@ -297,45 +454,23 @@
 
                 const handleEditorClick = (e) => { if (e.target.tagName === 'INPUT' && e.target.type === 'checkbox') { if (e.target.hasAttribute('checked')) { e.target.removeAttribute('checked'); } else { e.target.setAttribute('checked', 'checked'); } onEditorInput({ target: editorRef.value }); } };
                 
-                // === FIXED CHECKBOX KEYDOWN LOGIC ===
                 const handleEditorKeydown = (e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                         const sel = window.getSelection();
                         if (!sel.rangeCount) return;
-                        
-                        // Find current block
-                        let node = sel.anchorNode;
-                        if (node.nodeType === 3) node = node.parentNode;
-                        while (node && node.parentNode !== editorRef.value && node !== editorRef.value) {
-                            node = node.parentNode;
-                        }
-                        
-                        // If inside a block (div/p) within editor
-                        if (node && node.nodeType === 1 && node !== editorRef.value) {
-                            const checkbox = node.querySelector('input[type="checkbox"]');
-                            if (checkbox) {
-                                // Check if line is "empty" (has checkbox but no text)
-                                // Clone to remove checkbox and check remaining text
-                                const clone = node.cloneNode(true);
-                                const cloneCb = clone.querySelector('input[type="checkbox"]');
-                                if (cloneCb) cloneCb.remove();
-                                const text = clone.textContent.replace(/[\s\u00A0]/g, ''); // Strict empty check
-                                
-                                if (text === '') {
-                                    // Case 1: Empty line -> Cancel List (Remove CB, Keep Block)
-                                    e.preventDefault();
-                                    checkbox.remove();
-                                    onEditorInput({ target: editorRef.value });
-                                } else {
-                                    // Case 2: Has text -> Continue List (New line with CB)
-                                    // Let default Enter create the new div, then inject CB
-                                    setTimeout(() => {
-                                        document.execCommand('insertHTML', false, '<input type="checkbox">&nbsp;');
-                                        onEditorInput({ target: editorRef.value });
-                                    }, 0);
-                                }
-                            }
-                        }
+                        let currentNode = sel.anchorNode;
+                        if (currentNode.nodeType === 3) currentNode = currentNode.parentNode;
+                        let block = currentNode;
+                        while (block && block.parentNode !== editorRef.value && block !== editorRef.value) { block = block.parentNode; }
+                        if (!block || block === editorRef.value) return; 
+                        const checkbox = block.querySelector('input[type="checkbox"]');
+                        if (!checkbox) return;
+                        const clone = block.cloneNode(true);
+                        const cloneCb = clone.querySelector('input[type="checkbox"]');
+                        if (cloneCb) cloneCb.remove();
+                        const text = clone.textContent.replace(/[\s\u00A0]/g, ''); 
+                        if (text === '') { e.preventDefault(); checkbox.remove(); onEditorInput({ target: editorRef.value }); } 
+                        else { setTimeout(() => { document.execCommand('insertHTML', false, '<input type="checkbox">&nbsp;'); onEditorInput({ target: editorRef.value }); }, 0); }
                     }
                 };
 
@@ -351,20 +486,20 @@
                 onMounted(() => {
                     if (tagListRef.value) { new Sortable(tagListRef.value, { animation: 150, ghostClass: 'opacity-40', onEnd: (evt) => { const items = evt.to.children; const newOrder = []; for(let i=0; i<items.length; i++) newOrder.push(items[i].getAttribute('data-id')); tagOrder.value = newOrder; saveData(); }}); }
                     setInterval(() => timeTrigger.value = Date.now(), 60000);
-                    // FORCE DIV MODE
                     document.execCommand('defaultParagraphSeparator', false, 'div');
                 });
 
                 return {
                     sidebarOpen, activeTag, searchQuery, tagListRef, sortedTags, setFilter, highlightText,
                     newTaskInput, newTaskDue, taskError, detectedTags, addTask, toggleTask, deleteTask, getDueDateColor,
-                    editingId, editTitle, editDue, startEdit, saveEdit, cancelEdit,
+                    editingId, editTitle, editDue, editTagsString, startEdit, saveEdit, cancelEdit, // Edit State
                     filteredTasks, filteredNotes, formatDateTime, formatRelativeTime, getPreviewText,
                     editingNote, openEditor, closeEditor, onEditorInput, deleteCurrentNote, editorRef, 
                     execCmd, changeFontSize, insertCheckbox, handleEditorClick, handleEditorKeydown, wordCount,
                     copyFormat, pasteFormat, copiedStyle, startBackdropClick, confirmBackdropClick,
                     tagInput, tagSuggestions, addTag, addSuggestedTag, removeTag, onTagBackspace, tagInputRef,
-                    exportData, importData, fileInput, showImportModal, pendingImport, importScope, importMode, executeImport
+                    exportData, importData, fileInput, showImportModal, pendingImport, importScope, importMode, executeImport,
+                    openRenameModal, showRenameModal, renameInput, confirmRename, confirmRenameBackdropClick // Rename & Fix
                 };
             }
         });
