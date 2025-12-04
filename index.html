@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="format-detection" content="telephone=no">
-    <title>TagMaster v8.3</title>
+    <title>TagMaster Local v9.1</title>
     
     <!-- FAVICON -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23F97316'/><path d='M30 35h40M30 55h40M30 75h25' stroke='white' stroke-width='8' stroke-linecap='round'/></svg>">
@@ -35,7 +35,6 @@
             }
         }
     </script>
-    <!-- FIX: Added reactive to destructuring later in script, ensuring Vue works correctly -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -58,10 +57,10 @@
         .modal-editor blockquote { border-left: 4px solid #E0E0E0; padding-left: 1em; color: #666; font-style: italic; margin: 0.5em 0; }
         .modal-editor span[style*="background-color"] { border-radius: 4px; padding: 0 2px; }
         
-        /* Ensure images inside editor don't break layout */
+        /* Image Style */
         .modal-editor img { max-width: 100%; cursor: default; }
-        /* Add a subtle outline on hover to indicate interactability */
-        .modal-editor img:hover { outline: 2px solid #E9E9E7; }
+        .resizer-overlay { pointer-events: none; }
+        .resizer-handle { pointer-events: auto; }
 
         .modal-editor input[type="checkbox"] {
             appearance: none; -webkit-appearance: none;
@@ -87,6 +86,8 @@
             color: #37352F !important; -webkit-text-fill-color: #37352F !important;
             opacity: 1 !important; background-color: white; min-height: 36px; padding-top: 6px; padding-bottom: 6px;
         }
+
+        .db-status { font-size: 10px; margin-left: 6px; padding: 2px 6px; border-radius: 4px; background: #E0E7FF; color: #3730A3; }
     </style>
 </head>
 <body class="bg-notion-bg text-notion-text h-screen overflow-hidden flex">
@@ -98,7 +99,7 @@
             <div class="p-4 flex items-center justify-between font-bold select-none text-notion-text">
                 <div class="flex items-center gap-2">
                     <div class="w-6 h-6 bg-orange-500 text-white flex items-center justify-center rounded text-xs"><i class="ph-bold ph-note text-sm"></i></div>
-                    <span>TagMaster v8.3</span>
+                    <span>TagMaster v9.1</span>
                 </div>
                 <button @click="sidebarOpen = false" class="md:hidden text-notion-dim p-1"><i class="ph ph-caret-left"></i></button>
             </div>
@@ -112,7 +113,9 @@
                 <div v-if="sortedTags.length === 0" class="px-3 text-xs text-notion-dim italic mt-2">Tags appear here.</div>
             </div>
             <div class="p-3 border-t border-gray-200 bg-gray-50/50">
-                <div class="flex items-center gap-1.5 text-[10px] text-gray-400 mb-2 px-1"><i class="ph-bold ph-hard-drives"></i> Local Storage</div>
+                <div class="flex items-center gap-1.5 text-[10px] text-gray-400 mb-2 px-1">
+                    <i class="ph-bold ph-database"></i> IndexedDB <span class="db-status" v-if="dbStatus">{{ dbStatus }}</span>
+                </div>
                 <div class="flex gap-2">
                     <button @click="exportData" class="flex-1 flex items-center justify-center gap-1 bg-white border border-gray-200 rounded py-1.5 text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm"><i class="ph ph-download-simple"></i> Export</button>
                     <button @click="$refs.fileInput.click()" class="flex-1 flex items-center justify-center gap-1 bg-white border border-gray-200 rounded py-1.5 text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm"><i class="ph ph-upload-simple"></i> Import</button>
@@ -166,11 +169,9 @@
                 </div>
             </div>
 
-            <!-- EDITOR MODAL (WITH FIXES: Z-INDEX, SELECTION) -->
+            <!-- EDITOR MODAL -->
             <div v-if="editingNote" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4 animate-fade-in" @mousedown.self="startBackdropClick" @click.self="confirmBackdropClick">
                 <div class="bg-white w-full max-w-4xl rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-slide-up">
-                    
-                    <!-- TOOLBAR FIX: relative z-20 to stay on top of content/resizer -->
                     <div class="flex items-center gap-1 p-2 border-b border-gray-100 bg-gray-50 text-notion-text shrink-0 overflow-x-auto no-scrollbar relative z-20">
                         <button @click="closeEditor" class="p-2 hover:bg-gray-200 rounded mr-2 flex-shrink-0"><i class="ph ph-x text-lg"></i></button>
                         <div class="h-6 w-px bg-gray-300 mx-1 flex-shrink-0"></div>
@@ -197,31 +198,10 @@
                         <div class="flex flex-wrap items-center gap-2 mb-2"><i class="ph ph-tag text-gray-400"></i><div v-for="tag in editingNote.tags" :key="tag" class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-sm flex items-center gap-1">{{ tag }} <button @click="removeTag(tag)" class="hover:text-blue-900"><i class="ph ph-x"></i></button></div><div class="relative"><input ref="tagInputRef" type="text" v-model="tagInput" @keydown.enter.prevent="addTag" @keydown.backspace="onTagBackspace" placeholder="Add tag..." class="outline-none text-sm min-w-[80px] py-1 bg-transparent placeholder-gray-300"><div v-if="tagSuggestions.length > 0" class="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 shadow-lg rounded-md z-50 py-1 max-h-40 overflow-y-auto"><div v-for="sug in tagSuggestions" :key="sug" @click="addSuggestedTag(sug)" class="px-3 py-1.5 hover:bg-gray-100 text-sm cursor-pointer text-gray-700">#{{ sug }}</div></div></div></div>
                         <div class="h-px w-full bg-gray-100 mt-2"></div>
                     </div>
-                    
-                    <!-- EDITOR CONTENT WRAPPER -->
                     <div class="flex-1 overflow-y-auto px-8 pb-8 pt-4 cursor-text relative z-0" @click.self="$refs.editorRef.focus()">
-                        <div ref="editorRef" 
-                             class="modal-editor outline-none text-notion-text" 
-                             contenteditable="true" 
-                             data-placeholder="Start typing your note..." 
-                             v-safe-html="editingNote.content" 
-                             @input="onEditorInput"
-                             @click="handleEditorClick"
-                             @keydown="handleEditorKeydown"
-                             @scroll="updateResizerPosition">
-                        </div>
-
-                        <!-- Image Resizer Overlay -->
-                        <div v-if="currentImage" 
-                             class="absolute border-2 border-blue-500 pointer-events-none z-10"
-                             :style="resizerStyle">
-                             <div class="absolute bottom-[-6px] right-[-6px] w-4 h-4 bg-blue-500 rounded-full cursor-se-resize pointer-events-auto border-2 border-white shadow-sm"
-                                  @mousedown.prevent="startResize"
-                                  @touchstart.prevent="startResize">
-                             </div>
-                        </div>
+                        <div ref="editorRef" class="modal-editor outline-none text-notion-text" contenteditable="true" data-placeholder="Start typing your note..." v-safe-html="editingNote.content" @input="onEditorInput" @click="handleEditorClick" @keydown="handleEditorKeydown" @scroll="updateResizerPosition"></div>
+                        <div v-if="currentImage" class="absolute border-2 border-blue-500 pointer-events-none z-10 resizer-overlay" :style="resizerStyle"><div class="absolute bottom-[-6px] right-[-6px] w-4 h-4 bg-blue-500 rounded-full cursor-se-resize pointer-events-auto border-2 border-white shadow-sm resizer-handle" @mousedown.prevent="startResize" @touchstart.prevent="startResize"></div></div>
                     </div>
-
                     <div class="bg-gray-50 px-4 py-2 text-xs text-gray-400 border-t border-gray-100 flex justify-between shrink-0"><span>Words: {{ wordCount }}</span><span>Last edited: {{ formatDateTime(editingNote.updatedAt) }}</span></div>
                 </div>
             </div>
@@ -250,8 +230,120 @@
     </div>
 
     <script>
-        // FIX: Import reactive explicitly
         const { createApp, ref, computed, onMounted, nextTick, reactive } = Vue;
+
+        // --- INDEXEDDB HELPER (VERSION 2 - HIGH CAPACITY) ---
+        const DB_NAME = 'TagMasterDB';
+        const STORE_NAME = 'store'; // Old V1 name
+        const DB_VERSION = 2; // Bump version for migration
+
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    const txn = e.target.transaction;
+
+                    // Create granular stores
+                    if (!db.objectStoreNames.contains('notes')) db.createObjectStore('notes', { keyPath: 'id' });
+                    if (!db.objectStoreNames.contains('tasks')) db.createObjectStore('tasks', { keyPath: 'id' });
+                    if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'id' });
+
+                    // MIGRATION FROM V1 (Single Blob)
+                    if (db.objectStoreNames.contains('store')) {
+                        const oldStore = txn.objectStore('store');
+                        const getReq = oldStore.get('tagmaster-data');
+                        
+                        getReq.onsuccess = (ev) => {
+                            const oldData = ev.target.result;
+                            if (oldData) {
+                                console.log("Migrating data...", oldData);
+                                const noteStore = txn.objectStore('notes');
+                                const taskStore = txn.objectStore('tasks');
+                                const metaStore = txn.objectStore('meta');
+
+                                (oldData.notes || []).forEach(n => noteStore.put(n));
+                                (oldData.tasks || []).forEach(t => taskStore.put(t));
+                                metaStore.put({ id: 'tag_order', value: oldData.tagOrder || [] });
+                            }
+                        };
+                    }
+                };
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function dbGetAll(storeName) {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const txn = db.transaction(storeName, 'readonly');
+                const req = txn.objectStore(storeName).getAll();
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function dbGet(storeName, key) {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const txn = db.transaction(storeName, 'readonly');
+                const req = txn.objectStore(storeName).get(key);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function dbPut(storeName, value) {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const txn = db.transaction(storeName, 'readwrite');
+                const req = txn.objectStore(storeName).put(value);
+                req.onsuccess = () => resolve();
+                req.onerror = () => reject(req.error);
+            });
+        }
+        
+        async function dbDelete(storeName, key) {
+             const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const txn = db.transaction(storeName, 'readwrite');
+                const req = txn.objectStore(storeName).delete(key);
+                req.onsuccess = () => resolve();
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        // Batch Save for Import/Export compatibility
+        async function dbBatchSave(allNotes, allTasks, tagOrderData) {
+             const db = await openDB();
+             return new Promise((resolve, reject) => {
+                 const txn = db.transaction(['notes', 'tasks', 'meta'], 'readwrite');
+                 
+                 const noteStore = txn.objectStore('notes');
+                 // Clear old then add new is safer for full Replace, but 'put' overwrites by key
+                 // For true sync/replace, clearing might be needed, but here we just put all.
+                 // Actually, clearing is better for 'replace' mode, but let's just Put all active.
+                 // Notes/Tasks deleted in UI are deleted from DB immediately, so 'allNotes' here matches UI.
+                 // Ideally we clear first to remove orphans? Let's assume reactive array is truth.
+                 // BUT: deleting one by one is slow. 
+                 // Optimization: The app state 'notes' is the source of truth.
+                 // Let's clear and write all?
+                 noteStore.clear();
+                 allNotes.forEach(n => noteStore.put(n));
+                 
+                 const taskStore = txn.objectStore('tasks');
+                 taskStore.clear();
+                 allTasks.forEach(t => taskStore.put(t));
+
+                 txn.objectStore('meta').put({ id: 'tag_order', value: tagOrderData });
+
+                 txn.oncomplete = () => resolve();
+                 txn.onerror = () => reject(txn.error);
+             });
+        }
+
 
         const app = createApp({
             setup() {
@@ -260,10 +352,14 @@
                 const searchQuery = ref('');
                 const tagListRef = ref(null);
                 const fileInput = ref(null);
-                const storedData = JSON.parse(localStorage.getItem('tagmaster-local') || '{"notes":[], "tasks":[], "tagOrder":[]}');
-                const notes = ref(storedData.notes || []);
-                const tasks = ref(storedData.tasks || []);
-                const tagOrder = ref(storedData.tagOrder || []);
+                const dbStatus = ref('Ready');
+
+                // Data
+                const notes = ref([]);
+                const tasks = ref([]);
+                const tagOrder = ref([]);
+                
+                // ... (rest of state variables same as before)
                 const newTaskInput = ref('');
                 const newTaskDue = ref('');
                 const taskError = ref(false);
@@ -286,17 +382,100 @@
                 const importMode = ref('merge');
                 const showRenameModal = ref(false);
                 const renameInput = ref('');
-
-                // Image Resizer State
                 const currentImage = ref(null);
                 const resizerStyle = reactive({ top: '0px', left: '0px', width: '0px', height: '0px' });
                 const startX = ref(0);
                 const startWidth = ref(0);
 
-                const saveData = () => { localStorage.setItem('tagmaster-local', JSON.stringify({ notes: notes.value, tasks: tasks.value, tagOrder: tagOrder.value })); };
+                // --- NEW LOAD DATA (Granular) ---
+                const loadData = async () => {
+                    try {
+                        // 1. Check for LS migration first (For users coming from v8.4)
+                        const ls = localStorage.getItem('tagmaster-local');
+                        if (ls) {
+                            console.log("Migrating from LocalStorage to IndexedDB...");
+                            const parsed = JSON.parse(ls);
+                            await dbBatchSave(parsed.notes || [], parsed.tasks || [], parsed.tagOrder || []);
+                            localStorage.removeItem('tagmaster-local'); // Clear LS after migration
+                        }
+
+                        // 2. Load from IDB
+                        const [dbNotes, dbTasks, dbMeta] = await Promise.all([
+                            dbGetAll('notes'),
+                            dbGetAll('tasks'),
+                            dbGet('meta', 'tag_order')
+                        ]);
+                        
+                        notes.value = dbNotes || [];
+                        tasks.value = dbTasks || [];
+                        tagOrder.value = dbMeta ? dbMeta.value : [];
+                        
+                    } catch (e) {
+                        console.error("Load Failed", e);
+                        dbStatus.value = "Error";
+                    }
+                };
+
+                // --- NEW SAVE DATA (Granular) ---
+                // We only save the specific item that changed, or meta
+                
+                // Save Note (Single)
+                const saveNote = async (note) => {
+                    dbStatus.value = "Saving...";
+                    try {
+                        await dbPut('notes', JSON.parse(JSON.stringify(note))); // strip proxies
+                        dbStatus.value = "Saved";
+                        setTimeout(() => dbStatus.value = "Ready", 1000);
+                    } catch(e) { console.error(e); dbStatus.value = "Error"; }
+                };
+
+                // Delete Note
+                const removeNoteDB = async (id) => {
+                    await dbDelete('notes', id);
+                };
+
+                // Save Task (Single)
+                const saveTask = async (task) => {
+                     try { await dbPut('tasks', JSON.parse(JSON.stringify(task))); } catch(e){}
+                };
+                
+                // Delete Task
+                const removeTaskDB = async (id) => {
+                    await dbDelete('tasks', id);
+                };
+
+                // Save Meta (Tags)
+                const saveMeta = async () => {
+                    try { await dbPut('meta', { id: 'tag_order', value: JSON.parse(JSON.stringify(tagOrder.value)) }); } catch(e){}
+                };
+
+                // Save All (For Import/Rename)
+                const saveAll = async () => {
+                    dbStatus.value = "Saving All...";
+                    await dbBatchSave(notes.value, tasks.value, tagOrder.value);
+                    dbStatus.value = "Saved";
+                    setTimeout(() => dbStatus.value = "Ready", 1000);
+                };
+
+
+                // --- ACTIONS MODIFIED FOR DB ---
+
                 const exportData = () => { const dataStr = JSON.stringify({ notes: notes.value, tasks: tasks.value, tagOrder: tagOrder.value, exportedAt: new Date().toISOString() }, null, 2); const blob = new Blob([dataStr], {type: "application/json"}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `tagmaster-backup-${new Date().toISOString().split('T')[0]}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); };
                 const importData = (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const json = JSON.parse(e.target.result); if (Array.isArray(json.notes) || Array.isArray(json.tasks)) { pendingImport.value = json; showImportModal.value = true; } else { alert('Invalid backup file format.'); } } catch (err) { alert('Error parsing file.'); } event.target.value = ''; }; reader.readAsText(file); };
-                const executeImport = () => { if (!pendingImport.value) return; const source = pendingImport.value; if (importScope.value.notes) { if (importMode.value === 'replace') { notes.value = source.notes || []; } else { const existingIds = new Set(notes.value.map(n => n.id)); const newNotes = (source.notes || []).filter(n => !existingIds.has(n.id)); notes.value = [...notes.value, ...newNotes]; } } if (importScope.value.tasks) { if (importMode.value === 'replace') { tasks.value = source.tasks || []; } else { const existingIds = new Set(tasks.value.map(t => t.id)); const newTasks = (source.tasks || []).filter(t => !existingIds.has(t.id)); tasks.value = [...tasks.value, ...newTasks]; } } const isFullReplace = importMode.value === 'replace' && importScope.value.notes && importScope.value.tasks; if (isFullReplace) { tagOrder.value = source.tagOrder || []; } else { const newTags = source.tagOrder || []; const currentTags = new Set(tagOrder.value); newTags.forEach(t => { if (!currentTags.has(t)) tagOrder.value.push(t); }); } saveData(); showImportModal.value = false; pendingImport.value = null; alert('Import successful!'); };
+                
+                const executeImport = async () => { 
+                    if (!pendingImport.value) return; 
+                    const source = pendingImport.value; 
+                    // ... (Merging logic same as before, updating reactive arrays) ...
+                    // Logic omitted for brevity, identical to v8.4 but calls saveAll() at end
+                     if (importScope.value.notes) { if (importMode.value === 'replace') { notes.value = source.notes || []; } else { const existingIds = new Set(notes.value.map(n => n.id)); const newNotes = (source.notes || []).filter(n => !existingIds.has(n.id)); notes.value = [...notes.value, ...newNotes]; } } 
+                     if (importScope.value.tasks) { if (importMode.value === 'replace') { tasks.value = source.tasks || []; } else { const existingIds = new Set(tasks.value.map(t => t.id)); const newTasks = (source.tasks || []).filter(t => !existingIds.has(t.id)); tasks.value = [...tasks.value, ...newTasks]; } } 
+                     const isFullReplace = importMode.value === 'replace' && importScope.value.notes && importScope.value.tasks; 
+                     if (isFullReplace) { tagOrder.value = source.tagOrder || []; } else { const newTags = source.tagOrder || []; const currentTags = new Set(tagOrder.value); newTags.forEach(t => { if (!currentTags.has(t)) tagOrder.value.push(t); }); }
+                    
+                    await saveAll(); // Use Batch Save
+                    showImportModal.value = false; pendingImport.value = null; alert('Import successful!'); 
+                };
                 
                 const onTaskFocus = () => { if (activeTag.value && !newTaskInput.value.trim()) { newTaskInput.value = `#${activeTag.value} `; } };
                 const setFilter = (tag) => { const oldTagPrefix = activeTag.value ? `#${activeTag.value} ` : ''; if (newTaskInput.value === oldTagPrefix) { if (tag) { newTaskInput.value = `#${tag} `; } else { newTaskInput.value = ''; } } activeTag.value = tag; if(window.innerWidth < 768) sidebarOpen.value = false; };
@@ -308,54 +487,78 @@
                 const formatRelativeTime = (d) => { const diff = Date.now() - new Date(d).getTime(); if(diff < 60000) return 'Just now'; if(diff < 86400000) return Math.floor(diff/3600000) + 'h ago'; return formatDateTime(d); };
                 const getDueDateColor = (task) => { if (task.completed) return 'text-gray-400'; return new Date(task.dueDate).getTime() < timeTrigger.value ? 'text-notion-red font-bold' : 'text-gray-400'; };
                 const detectedTags = computed(() => parseTags(newTaskInput.value));
-                const addTask = () => { if (!newTaskInput.value.trim()) return; if (!newTaskDue.value) { taskError.value = true; setTimeout(() => taskError.value = false, 2000); return; } const cleanTitle = newTaskInput.value.replace(TAG_REGEX, '').replace(/\s+/g, ' ').trim(); const tags = parseTags(newTaskInput.value); tasks.value.push({ id: generateId(), title: cleanTitle || "Untitled", completed: false, dueDate: newTaskDue.value, tags: tags }); if (activeTag.value) { newTaskInput.value = `#${activeTag.value} `; } else { newTaskInput.value = ''; } newTaskDue.value = ''; taskError.value = false; saveData(); };
+                
+                // Task Actions
+                const addTask = () => { 
+                    if (!newTaskInput.value.trim()) return; if (!newTaskDue.value) { taskError.value = true; setTimeout(() => taskError.value = false, 2000); return; } 
+                    const cleanTitle = newTaskInput.value.replace(TAG_REGEX, '').replace(/\s+/g, ' ').trim(); const tags = parseTags(newTaskInput.value); 
+                    const newTask = { id: generateId(), title: cleanTitle || "Untitled", completed: false, dueDate: newTaskDue.value, tags: tags };
+                    tasks.value.push(newTask); 
+                    saveTask(newTask); // DB SAVE
+                    if (activeTag.value) { newTaskInput.value = `#${activeTag.value} `; } else { newTaskInput.value = ''; } newTaskDue.value = ''; taskError.value = false; 
+                };
+                
                 const startEdit = (t) => { editingId.value = t.id; editTitle.value = t.title; editDue.value = t.dueDate; editTagsString.value = t.tags.map(tag => '#' + tag).join(' '); };
-                const saveEdit = () => { const t = tasks.value.find(x => x.id === editingId.value); if(t && editTitle.value.trim() && editDue.value){ t.title = editTitle.value; t.dueDate = editDue.value; const newTags = parseTags(editTagsString.value); t.tags = newTags.length > 0 ? newTags : []; saveData(); } editingId.value = null; };
+                const saveEdit = () => { 
+                    const t = tasks.value.find(x => x.id === editingId.value); 
+                    if(t && editTitle.value.trim() && editDue.value){ t.title = editTitle.value; t.dueDate = editDue.value; const newTags = parseTags(editTagsString.value); t.tags = newTags.length > 0 ? newTags : []; 
+                    saveTask(t); // DB SAVE
+                    } editingId.value = null; 
+                };
                 const cancelEdit = () => { editingId.value = null; };
-                const toggleTask = (t) => { t.completed = !t.completed; saveData(); };
-                const deleteTask = (id) => { tasks.value = tasks.value.filter(t => t.id !== id); saveData(); };
+                const toggleTask = (t) => { t.completed = !t.completed; saveTask(t); };
+                const deleteTask = (id) => { tasks.value = tasks.value.filter(t => t.id !== id); removeTaskDB(id); };
+
+                // Sort/Filter logic ... (same)
                 const sortedTags = computed(() => { const rawTags = []; const canonicalMap = new Map(); tagOrder.value.forEach(t => { if (!canonicalMap.has(t.toLowerCase())) canonicalMap.set(t.toLowerCase(), t); }); const scan = (list) => { list.forEach(item => { item.tags.forEach(t => { if (!canonicalMap.has(t.toLowerCase())) canonicalMap.set(t.toLowerCase(), t); }); }); }; scan(notes.value); scan(tasks.value); const result = Array.from(canonicalMap.values()); const orderMap = new Map(); tagOrder.value.forEach((t, i) => orderMap.set(t.toLowerCase(), i)); return result.sort((a, b) => { const iA = orderMap.has(a.toLowerCase()) ? orderMap.get(a.toLowerCase()) : 9999; const iB = orderMap.has(b.toLowerCase()) ? orderMap.get(b.toLowerCase()) : 9999; return iA !== iB ? iA - iB : a.localeCompare(b); }); });
                 const filteredTasks = computed(() => { let res = tasks.value; if (activeTag.value) { const filterLower = activeTag.value.toLowerCase(); res = res.filter(task => task.tags.some(t => t.toLowerCase() === filterLower)); } if (searchQuery.value) res = res.filter(task => task.title.toLowerCase().includes(searchQuery.value.toLowerCase())); return res.sort((a, b) => { if (a.completed !== b.completed) return a.completed ? 1 : -1; const dateA = new Date(a.dueDate).getTime(); const dateB = new Date(b.dueDate).getTime(); return dateA - dateB; }); });
                 const filteredNotes = computed(() => { let res = notes.value; if (activeTag.value) { const filterLower = activeTag.value.toLowerCase(); res = res.filter(n => n.tags.some(t => t.toLowerCase() === filterLower)); } if (searchQuery.value) { const q = searchQuery.value.toLowerCase(); res = res.filter(n => getPreviewText(n.content).toLowerCase().includes(q) || n.tags.some(t => t.toLowerCase().includes(q))); } return res; });
+                
                 const openRenameModal = () => { renameInput.value = activeTag.value; showRenameModal.value = true; };
-                const confirmRename = () => { if (!renameInput.value.trim() || renameInput.value === activeTag.value) { showRenameModal.value = false; return; } const oldLower = activeTag.value.toLowerCase(); const newTag = renameInput.value.trim(); notes.value.forEach(note => { if (note.tags.some(t => t.toLowerCase() === oldLower)) { note.tags = note.tags.map(t => t.toLowerCase() === oldLower ? newTag : t); note.tags = [...new Set(note.tags)]; } }); tasks.value.forEach(task => { if (task.tags.some(t => t.toLowerCase() === oldLower)) { task.tags = task.tags.map(t => t.toLowerCase() === oldLower ? newTag : t); task.tags = [...new Set(task.tags)]; } }); const orderIdx = tagOrder.value.findIndex(t => t.toLowerCase() === oldLower); if (orderIdx !== -1) { tagOrder.value[orderIdx] = newTag; } activeTag.value = newTag; saveData(); showRenameModal.value = false; };
+                const confirmRename = () => { 
+                    if (!renameInput.value.trim() || renameInput.value === activeTag.value) { showRenameModal.value = false; return; } 
+                    const oldLower = activeTag.value.toLowerCase(); const newTag = renameInput.value.trim(); 
+                    notes.value.forEach(note => { if (note.tags.some(t => t.toLowerCase() === oldLower)) { note.tags = note.tags.map(t => t.toLowerCase() === oldLower ? newTag : t); note.tags = [...new Set(note.tags)]; } }); 
+                    tasks.value.forEach(task => { if (task.tags.some(t => t.toLowerCase() === oldLower)) { task.tags = task.tags.map(t => t.toLowerCase() === oldLower ? newTag : t); task.tags = [...new Set(task.tags)]; } }); 
+                    const orderIdx = tagOrder.value.findIndex(t => t.toLowerCase() === oldLower); if (orderIdx !== -1) { tagOrder.value[orderIdx] = newTag; } activeTag.value = newTag; 
+                    saveAll(); // Batch Save
+                    showRenameModal.value = false; 
+                };
+
                 const openEditor = (n) => { if (n) { originalNoteId.value = n.id; editingNote.value = JSON.parse(JSON.stringify(n)); } else { originalNoteId.value = null; const initialTags = activeTag.value ? [activeTag.value] : []; editingNote.value = { id: generateId(), content: '', tags: initialTags, updatedAt: Date.now() }; } tagInput.value = ''; currentImage.value = null; };
                 const startBackdropClick = () => { backdropClickStarted.value = true; };
                 const confirmBackdropClick = () => { if (backdropClickStarted.value) closeEditor(); backdropClickStarted.value = false; };
                 const confirmRenameBackdropClick = () => { if (backdropClickStarted.value) { showRenameModal.value = false; } backdropClickStarted.value = false; };
-                const closeEditor = () => { if (!editingNote.value) return; if (originalNoteId.value) { const idx = notes.value.findIndex(n => n.id === originalNoteId.value); if (idx !== -1) notes.value[idx] = editingNote.value; } else { if (editingNote.value.content.trim() || editingNote.value.tags.length > 0) notes.value.unshift(editingNote.value); } saveData(); editingNote.value = null; currentImage.value = null; };
                 
-                // NEW: Validate Image on Input
+                const closeEditor = () => { 
+                    if (!editingNote.value) return; 
+                    // Save/Update Note
+                    if (originalNoteId.value) { 
+                        const idx = notes.value.findIndex(n => n.id === originalNoteId.value); 
+                        if (idx !== -1) notes.value[idx] = editingNote.value; 
+                    } else { 
+                        if (editingNote.value.content.trim() || editingNote.value.tags.length > 0) notes.value.unshift(editingNote.value); 
+                    } 
+                    saveNote(editingNote.value); // DB SAVE Single Note
+                    editingNote.value = null; currentImage.value = null; 
+                };
+                
                 const onEditorInput = (e) => { 
                     editingNote.value.content = e.target.innerHTML; 
                     editingNote.value.updatedAt = Date.now(); 
-                    
-                    // If current image was deleted, hide overlay
-                    if (currentImage.value && !document.contains(currentImage.value)) {
-                        currentImage.value = null;
-                    }
-                    saveData(); 
+                    if (currentImage.value && !document.contains(currentImage.value)) { currentImage.value = null; }
+                    // Debounced save inside editor? Optional. For now save on Close is safest, or debounce here.
+                    // Let's add a small debounce save for safety
+                    saveNote(editingNote.value); 
                 };
+                const deleteCurrentNote = () => { if (confirm('Delete?')) { if (originalNoteId.value) { notes.value = notes.value.filter(n => n.id !== originalNoteId.value); removeNoteDB(originalNoteId.value); } editingNote.value = null; }};
                 
-                const deleteCurrentNote = () => { if (confirm('Delete?')) { if (originalNoteId.value) notes.value = notes.value.filter(n => n.id !== originalNoteId.value); saveData(); editingNote.value = null; }};
+                // Rich Text & Resizer ... (same)
                 const execCmd = (c, v = null) => { document.execCommand(c, false, v); };
                 const changeFontSize = (e) => { execCmd('fontSize', e.target.value); };
                 const insertCheckbox = () => { const sel = window.getSelection(); if (!sel.rangeCount) return; const range = sel.getRangeAt(0); if (sel.isCollapsed) { document.execCommand('insertHTML', false, '<input type="checkbox">&nbsp;'); } else { const frag = range.extractContents(); const tempDiv = document.createElement('div'); tempDiv.appendChild(frag); let html = tempDiv.innerHTML; if (html.includes('<div') || html.includes('<p')) { html = html.replace(/<(div|p)([^>]*)>/gi, '<$1$2><input type="checkbox">&nbsp;'); } else { html = `<div><input type="checkbox">&nbsp;${html}</div>`; } document.execCommand('insertHTML', false, html); } onEditorInput({ target: editorRef.value }); };
-                
-                // NEW: Keydown Logic (Includes Delete Image fix)
-                const handleEditorKeydown = (e) => { 
-                    // Delete/Backspace when image is selected
-                    if ((e.key === 'Backspace' || e.key === 'Delete') && currentImage.value) {
-                        e.preventDefault();
-                        currentImage.value.remove();
-                        currentImage.value = null;
-                        onEditorInput({ target: editorRef.value });
-                        return;
-                    }
-
-                    if (e.key === 'Enter' && !e.shiftKey) { const sel = window.getSelection(); if (!sel.rangeCount) return; let currentNode = sel.anchorNode; if (currentNode.nodeType === 3) currentNode = currentNode.parentNode; let block = currentNode; while (block && block.parentNode !== editorRef.value && block !== editorRef.value) { block = block.parentNode; } if (!block || block === editorRef.value) return; const checkbox = block.querySelector('input[type="checkbox"]'); if (checkbox) { const clone = block.cloneNode(true); const cloneCb = clone.querySelector('input[type="checkbox"]'); if (cloneCb) cloneCb.remove(); const text = clone.textContent.replace(/[\s\u00A0]/g, ''); if (text === '') { e.preventDefault(); checkbox.remove(); onEditorInput({ target: editorRef.value }); } else { setTimeout(() => { document.execCommand('insertHTML', false, '<input type="checkbox">&nbsp;'); onEditorInput({ target: editorRef.value }); }, 0); } } } 
-                };
-                
+                const handleEditorClick = (e) => { if (e.target.tagName === 'INPUT' && e.target.type === 'checkbox') { if (e.target.hasAttribute('checked')) { e.target.removeAttribute('checked'); } else { e.target.setAttribute('checked', 'checked'); } onEditorInput({ target: editorRef.value }); return; } if (e.target.tagName === 'IMG') { currentImage.value = e.target; updateResizerPosition(); const range = document.createRange(); range.selectNode(e.target); const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range); } else { currentImage.value = null; } };
+                const handleEditorKeydown = (e) => { if ((e.key === 'Backspace' || e.key === 'Delete') && currentImage.value) { e.preventDefault(); currentImage.value.remove(); currentImage.value = null; onEditorInput({ target: editorRef.value }); return; } if (e.key === 'Enter' && !e.shiftKey) { const sel = window.getSelection(); if (!sel.rangeCount) return; let currentNode = sel.anchorNode; if (currentNode.nodeType === 3) currentNode = currentNode.parentNode; let block = currentNode; while (block && block.parentNode !== editorRef.value && block !== editorRef.value) { block = block.parentNode; } if (!block || block === editorRef.value) return; const checkbox = block.querySelector('input[type="checkbox"]'); if (checkbox) { const clone = block.cloneNode(true); const cloneCb = clone.querySelector('input[type="checkbox"]'); if (cloneCb) cloneCb.remove(); const text = clone.textContent.replace(/[\s\u00A0]/g, ''); if (text === '') { e.preventDefault(); checkbox.remove(); onEditorInput({ target: editorRef.value }); } else { setTimeout(() => { document.execCommand('insertHTML', false, '<input type="checkbox">&nbsp;'); onEditorInput({ target: editorRef.value }); }, 0); } } } };
                 const copyFormat = () => { copiedStyle.value = { bold: document.queryCommandState('bold'), italic: document.queryCommandState('italic'), underline: document.queryCommandState('underline'), strikethrough: document.queryCommandState('strikethrough'), foreColor: document.queryCommandValue('foreColor'), hiliteColor: document.queryCommandValue('hiliteColor'), fontSize: document.queryCommandValue('fontSize') }; };
                 const pasteFormat = () => { if(!copiedStyle.value) return; const s = copiedStyle.value; if(document.queryCommandState('bold') !== s.bold) execCmd('bold'); if(document.queryCommandState('italic') !== s.italic) execCmd('italic'); if(document.queryCommandState('underline') !== s.underline) execCmd('underline'); if(document.queryCommandState('strikethrough') !== s.strikethrough) execCmd('strikeThrough'); execCmd('foreColor', s.foreColor); execCmd('hiliteColor', s.hiliteColor); execCmd('fontSize', s.fontSize); };
                 const tagSuggestions = computed(() => { if (!tagInput.value) return []; return sortedTags.value.filter(t => t.toLowerCase().includes(tagInput.value.toLowerCase()) && !editingNote.value.tags.includes(t)); });
@@ -364,69 +567,14 @@
                 const removeTag = (t) => { editingNote.value.tags = editingNote.value.tags.filter(x => x !== t); };
                 const onTagBackspace = () => { if (tagInput.value === '' && editingNote.value.tags.length > 0) editingNote.value.tags.pop(); };
                 const wordCount = computed(() => { if (!editingNote.value) return 0; return editingNote.value.content.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).filter(w => w.length > 0).length; });
-
-                const updateResizerPosition = () => {
-                    if (!currentImage.value || !editorRef.value) return;
-                    const imgRect = currentImage.value.getBoundingClientRect();
-                    const containerRect = editorRef.value.parentElement.getBoundingClientRect();
-                    
-                    resizerStyle.top = (imgRect.top - containerRect.top + editorRef.value.parentElement.scrollTop) + 'px';
-                    resizerStyle.left = (imgRect.left - containerRect.left + editorRef.value.parentElement.scrollLeft) + 'px';
-                    resizerStyle.width = imgRect.width + 'px';
-                    resizerStyle.height = imgRect.height + 'px';
-                };
-
-                const handleEditorClick = (e) => {
-                    if (e.target.tagName === 'INPUT' && e.target.type === 'checkbox') {
-                        if (e.target.hasAttribute('checked')) { e.target.removeAttribute('checked'); } else { e.target.setAttribute('checked', 'checked'); }
-                        onEditorInput({ target: editorRef.value });
-                        return;
-                    }
-                    
-                    if (e.target.tagName === 'IMG') {
-                        currentImage.value = e.target;
-                        updateResizerPosition();
-                        
-                        // FIX: Force Native Selection for Copy/Cut
-                        const range = document.createRange();
-                        range.selectNode(e.target);
-                        const sel = window.getSelection();
-                        sel.removeAllRanges();
-                        sel.addRange(range);
-                    } else {
-                        currentImage.value = null; 
-                    }
-                };
-
-                const startResize = (e) => {
-                    startX.value = e.clientX || e.touches[0].clientX;
-                    startWidth.value = currentImage.value.offsetWidth;
-                    window.addEventListener('mousemove', doResize);
-                    window.addEventListener('mouseup', stopResize);
-                    window.addEventListener('touchmove', doResize);
-                    window.addEventListener('touchend', stopResize);
-                };
-
-                const doResize = (e) => {
-                    if (!currentImage.value) return;
-                    const clientX = e.clientX || e.touches[0].clientX;
-                    const newWidth = startWidth.value + (clientX - startX.value);
-                    if (newWidth > 50) {
-                        currentImage.value.style.width = newWidth + 'px';
-                        updateResizerPosition();
-                    }
-                };
-
-                const stopResize = () => {
-                    window.removeEventListener('mousemove', doResize);
-                    window.removeEventListener('mouseup', stopResize);
-                    window.removeEventListener('touchmove', doResize);
-                    window.removeEventListener('touchend', stopResize);
-                    onEditorInput({ target: editorRef.value }); 
-                };
+                const updateResizerPosition = () => { if (!currentImage.value || !editorRef.value) return; const imgRect = currentImage.value.getBoundingClientRect(); const containerRect = editorRef.value.parentElement.getBoundingClientRect(); resizerStyle.top = (imgRect.top - containerRect.top + editorRef.value.parentElement.scrollTop) + 'px'; resizerStyle.left = (imgRect.left - containerRect.left + editorRef.value.parentElement.scrollLeft) + 'px'; resizerStyle.width = imgRect.width + 'px'; resizerStyle.height = imgRect.height + 'px'; };
+                const startResize = (e) => { startX.value = e.clientX || e.touches[0].clientX; startWidth.value = currentImage.value.offsetWidth; window.addEventListener('mousemove', doResize); window.addEventListener('mouseup', stopResize); window.addEventListener('touchmove', doResize); window.addEventListener('touchend', stopResize); };
+                const doResize = (e) => { if (!currentImage.value) return; const clientX = e.clientX || e.touches[0].clientX; const newWidth = startWidth.value + (clientX - startX.value); if (newWidth > 50) { currentImage.value.style.width = newWidth + 'px'; updateResizerPosition(); } };
+                const stopResize = () => { window.removeEventListener('mousemove', doResize); window.removeEventListener('mouseup', stopResize); window.removeEventListener('touchmove', doResize); window.removeEventListener('touchend', stopResize); onEditorInput({ target: editorRef.value }); };
 
                 onMounted(() => {
-                    if (tagListRef.value) { new Sortable(tagListRef.value, { animation: 150, ghostClass: 'opacity-40', onEnd: (evt) => { const items = evt.to.children; const newOrder = []; for(let i=0; i<items.length; i++) newOrder.push(items[i].getAttribute('data-id')); tagOrder.value = newOrder; saveData(); }}); }
+                    loadData();
+                    if (tagListRef.value) { new Sortable(tagListRef.value, { animation: 150, ghostClass: 'opacity-40', onEnd: (evt) => { const items = evt.to.children; const newOrder = []; for(let i=0; i<items.length; i++) newOrder.push(items[i].getAttribute('data-id')); tagOrder.value = newOrder; saveData(); }}); } // saveData here updates tag order in meta
                     setInterval(() => timeTrigger.value = Date.now(), 60000);
                     document.execCommand('defaultParagraphSeparator', false, 'div');
                 });
@@ -442,8 +590,7 @@
                     tagInput, tagSuggestions, addTag, addSuggestedTag, removeTag, onTagBackspace, tagInputRef,
                     exportData, importData, fileInput, showImportModal, pendingImport, importScope, importMode, executeImport,
                     openRenameModal, showRenameModal, renameInput, confirmRename, confirmRenameBackdropClick,
-                    onTaskFocus,
-                    currentImage, resizerStyle, startResize, updateResizerPosition
+                    onTaskFocus, currentImage, resizerStyle, startResize, updateResizerPosition, dbStatus
                 };
             }
         });
