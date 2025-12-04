@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="format-detection" content="telephone=no">
-    <title>TagMaster v8.1</title>
+    <title>TagMaster v8.2</title>
     
     <!-- FAVICON -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23F97316'/><path d='M30 35h40M30 55h40M30 75h25' stroke='white' stroke-width='8' stroke-linecap='round'/></svg>">
@@ -47,7 +47,7 @@
         ::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
         [contenteditable]:focus { outline: none; }
         
-        .modal-editor { min-height: 300px; max-height: 60vh; overflow-y: auto; line-height: 1.7; font-size: 1.05rem; }
+        .modal-editor { min-height: 300px; max-height: 60vh; line-height: 1.7; font-size: 1.05rem; } /* Removed overflow-y here, handled by parent */
         .modal-editor:empty:before { content: attr(data-placeholder); color: #9B9A97; pointer-events: none; display: block; }
         .modal-editor ul { list-style-type: disc; margin-left: 1.5em; }
         .modal-editor ol { list-style-type: decimal; margin-left: 1.5em; }
@@ -56,6 +56,10 @@
         .modal-editor blockquote { border-left: 4px solid #E0E0E0; padding-left: 1em; color: #666; font-style: italic; margin: 0.5em 0; }
         .modal-editor span[style*="background-color"] { border-radius: 4px; padding: 0 2px; }
         
+        /* Images inside editor */
+        .modal-editor img { max-width: 100%; cursor: default; }
+        .modal-editor img:hover { outline: 2px solid #E9E9E7; }
+
         .modal-editor input[type="checkbox"] {
             appearance: none; -webkit-appearance: none;
             width: 1.1em; height: 1.1em;
@@ -91,7 +95,7 @@
             <div class="p-4 flex items-center justify-between font-bold select-none text-notion-text">
                 <div class="flex items-center gap-2">
                     <div class="w-6 h-6 bg-orange-500 text-white flex items-center justify-center rounded text-xs"><i class="ph-bold ph-note text-sm"></i></div>
-                    <span>TagMaster v8.1</span>
+                    <span>TagMaster v8.2</span>
                 </div>
                 <button @click="sidebarOpen = false" class="md:hidden text-notion-dim p-1"><i class="ph ph-caret-left"></i></button>
             </div>
@@ -134,42 +138,17 @@
 
                     <section class="mb-10">
                         <h2 class="text-xs font-bold text-notion-dim uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Tasks</h2>
-                        
-                        <!-- ADD TASK INPUT (With @focus) -->
                         <div class="relative group mb-4 bg-white border border-gray-200 rounded-lg p-2 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all shadow-sm" :class="{'border-red-400 ring-2 ring-red-100 shake': taskError}">
                             <div class="flex flex-col md:flex-row gap-2">
-                                <div class="flex items-center gap-2 flex-1">
-                                    <i class="ph ph-plus text-gray-400 ml-1"></i>
-                                    <input type="text" 
-                                           v-model="newTaskInput" 
-                                           @focus="onTaskFocus"
-                                           @keyup.enter="addTask" 
-                                           placeholder="Add task... (e.g. Buy milk #home)" 
-                                           class="flex-1 px-1 py-1 outline-none text-sm bg-transparent min-w-0">
-                                </div>
-                                <div class="flex items-center gap-2 border-t md:border-t-0 md:border-l border-gray-100 pt-2 md:pt-0 md:pl-2">
-                                    <input type="datetime-local" v-model="newTaskDue" style="color-scheme: light;" class="flex-1 md:flex-none w-full md:w-auto text-xs text-gray-900 bg-white rounded px-2 outline-none border transition-colors font-mono" :class="taskError ? 'border-red-500' : 'border-gray-300'">
-                                    <button @click="addTask" class="h-9 px-4 bg-notion-text text-white rounded-md text-xs font-medium hover:opacity-90 whitespace-nowrap">Add</button>
-                                </div>
+                                <div class="flex items-center gap-2 flex-1"><i class="ph ph-plus text-gray-400 ml-1"></i><input type="text" v-model="newTaskInput" @focus="onTaskFocus" @keyup.enter="addTask" placeholder="Add task... (e.g. Buy milk #home)" class="flex-1 px-1 py-1 outline-none text-sm bg-transparent min-w-0"></div>
+                                <div class="flex items-center gap-2 border-t md:border-t-0 md:border-l border-gray-100 pt-2 md:pt-0 md:pl-2"><input type="datetime-local" v-model="newTaskDue" style="color-scheme: light;" class="flex-1 md:flex-none w-full md:w-auto text-xs text-gray-900 bg-white rounded px-2 outline-none border transition-colors font-mono" :class="taskError ? 'border-red-500' : 'border-gray-300'"><button @click="addTask" class="h-9 px-4 bg-notion-text text-white rounded-md text-xs font-medium hover:opacity-90 whitespace-nowrap">Add</button></div>
                             </div>
-                            <div v-if="detectedTags.length > 0" class="absolute -bottom-6 left-2 flex gap-1"><span v-for="tag in detectedTags" :key="tag" class="text-[10px] bg-blue-50 text-blue-600 px-1.5 rounded animate-pulse">#{{ tag }} will be added</span></div>
-                            <div v-if="taskError" class="absolute -bottom-6 right-0 text-[10px] text-red-500 font-bold">* Due date required</div>
+                            <div v-if="detectedTags.length > 0" class="absolute -bottom-6 left-2 flex gap-1"><span v-for="tag in detectedTags" :key="tag" class="text-[10px] bg-blue-50 text-blue-600 px-1.5 rounded animate-pulse">#{{ tag }} will be added</span></div><div v-if="taskError" class="absolute -bottom-6 right-0 text-[10px] text-red-500 font-bold">* Due date required</div>
                         </div>
-
                         <div class="space-y-1">
                             <div v-for="task in filteredTasks" :key="task.id" class="p-2 hover:bg-notion-hover rounded group transition-colors duration-200">
                                 <div v-if="editingId !== task.id" class="flex items-start gap-3"><button @click="toggleTask(task)" class="mt-0.5 text-gray-400 hover:text-notion-blue transition-colors shrink-0"><i class="ph text-xl" :class="task.completed ? 'ph-check-square text-notion-blue' : 'ph-square'"></i></button><div class="flex-1 min-w-0"><div class="text-sm break-words" :class="{'line-through text-notion-dim': task.completed}"><span v-if="searchQuery" v-html="highlightText(task.title)"></span><span v-else>{{ task.title }}</span></div><div class="flex flex-wrap items-center gap-2 mt-1"><span v-for="tag in task.tags" :key="tag" @click.stop="setFilter(tag)" class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded cursor-pointer hover:bg-gray-200">#{{ tag }}</span><span v-if="task.dueDate" class="text-[10px] flex items-center gap-1 font-mono" :class="getDueDateColor(task)"><i class="ph ph-clock"></i> {{ formatDateTime(task.dueDate) }}</span></div></div><div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><button @click="startEdit(task)" class="text-gray-400 hover:text-blue-500 p-1"><i class="ph ph-pencil-simple"></i></button><button @click="deleteTask(task.id)" class="text-gray-400 hover:text-red-500 p-1"><i class="ph ph-trash"></i></button></div></div>
-                                <div v-else class="flex flex-col gap-2 bg-white border border-blue-200 rounded p-2 shadow-sm">
-                                    <input type="text" v-model="editTitle" class="w-full text-sm outline-none border-b border-gray-200 pb-1 font-medium" placeholder="Task title">
-                                    <div class="flex items-center gap-2">
-                                        <i class="ph ph-tag text-gray-400 text-xs"></i>
-                                        <input type="text" v-model="editTagsString" class="flex-1 text-xs text-blue-600 outline-none bg-blue-50/50 rounded px-1" placeholder="#tag1 #tag2">
-                                    </div>
-                                    <div class="flex items-center justify-between gap-2 mt-1">
-                                        <input type="datetime-local" v-model="editDue" style="color-scheme: light;" class="flex-1 text-xs text-gray-900 bg-white rounded px-2 py-1.5 border border-gray-200 h-8 font-mono">
-                                        <div class="flex gap-2"><button @click="saveEdit" class="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 h-8">Save</button><button @click="cancelEdit" class="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 h-8">Cancel</button></div>
-                                    </div>
-                                </div>
+                                <div v-else class="flex flex-col gap-2 bg-white border border-blue-200 rounded p-2 shadow-sm"><input type="text" v-model="editTitle" class="w-full text-sm outline-none border-b border-gray-200 pb-1 font-medium" placeholder="Task title"><div class="flex items-center gap-2"><i class="ph ph-tag text-gray-400 text-xs"></i><input type="text" v-model="editTagsString" class="flex-1 text-xs text-blue-600 outline-none bg-blue-50/50 rounded px-1" placeholder="#tag1 #tag2"></div><div class="flex items-center justify-between gap-2 mt-1"><input type="datetime-local" v-model="editDue" style="color-scheme: light;" class="flex-1 text-xs text-gray-900 bg-white rounded px-2 py-1.5 border border-gray-200 h-8 font-mono"><div class="flex gap-2"><button @click="saveEdit" class="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 h-8">Save</button><button @click="cancelEdit" class="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 h-8">Cancel</button></div></div></div>
                             </div>
                             <div v-if="filteredTasks.length === 0 && searchQuery" class="text-sm text-gray-400 italic px-2">No tasks matching search.</div>
                         </div>
@@ -187,7 +166,7 @@
                 </div>
             </div>
 
-            <!-- EDITOR MODAL -->
+            <!-- EDITOR MODAL (WITH IMAGE RESIZER) -->
             <div v-if="editingNote" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4 animate-fade-in" @mousedown.self="startBackdropClick" @click.self="confirmBackdropClick">
                 <div class="bg-white w-full max-w-4xl rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-slide-up">
                     <div class="flex items-center gap-1 p-2 border-b border-gray-100 bg-gray-50 text-notion-text shrink-0 overflow-x-auto no-scrollbar">
@@ -216,9 +195,32 @@
                         <div class="flex flex-wrap items-center gap-2 mb-2"><i class="ph ph-tag text-gray-400"></i><div v-for="tag in editingNote.tags" :key="tag" class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-sm flex items-center gap-1">{{ tag }} <button @click="removeTag(tag)" class="hover:text-blue-900"><i class="ph ph-x"></i></button></div><div class="relative"><input ref="tagInputRef" type="text" v-model="tagInput" @keydown.enter.prevent="addTag" @keydown.backspace="onTagBackspace" placeholder="Add tag..." class="outline-none text-sm min-w-[80px] py-1 bg-transparent placeholder-gray-300"><div v-if="tagSuggestions.length > 0" class="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 shadow-lg rounded-md z-50 py-1 max-h-40 overflow-y-auto"><div v-for="sug in tagSuggestions" :key="sug" @click="addSuggestedTag(sug)" class="px-3 py-1.5 hover:bg-gray-100 text-sm cursor-pointer text-gray-700">#{{ sug }}</div></div></div></div>
                         <div class="h-px w-full bg-gray-100 mt-2"></div>
                     </div>
-                    <div class="flex-1 overflow-y-auto px-8 pb-8 pt-4 cursor-text" @click="$refs.editorRef.focus()">
-                        <div ref="editorRef" class="modal-editor outline-none text-notion-text" contenteditable="true" data-placeholder="Start typing your note..." v-safe-html="editingNote.content" @input="onEditorInput" @click="handleEditorClick" @keydown="handleEditorKeydown"></div>
+                    
+                    <!-- EDITOR CONTENT WRAPPER (Relative for overlay) -->
+                    <div class="flex-1 overflow-y-auto px-8 pb-8 pt-4 cursor-text relative" @click.self="$refs.editorRef.focus()">
+                        <div ref="editorRef" 
+                             class="modal-editor outline-none text-notion-text" 
+                             contenteditable="true" 
+                             data-placeholder="Start typing your note..." 
+                             v-safe-html="editingNote.content" 
+                             @input="onEditorInput"
+                             @click="handleEditorClick"
+                             @keydown="handleEditorKeydown"
+                             @scroll="updateResizerPosition"> <!-- Add scroll listener -->
+                        </div>
+
+                        <!-- Image Resizer Overlay -->
+                        <div v-if="currentImage" 
+                             class="absolute border-2 border-blue-500 pointer-events-none z-10"
+                             :style="resizerStyle">
+                             <!-- Handle -->
+                             <div class="absolute bottom-[-6px] right-[-6px] w-4 h-4 bg-blue-500 rounded-full cursor-se-resize pointer-events-auto border-2 border-white shadow-sm"
+                                  @mousedown.prevent="startResize"
+                                  @touchstart.prevent="startResize">
+                             </div>
+                        </div>
                     </div>
+
                     <div class="bg-gray-50 px-4 py-2 text-xs text-gray-400 border-t border-gray-100 flex justify-between shrink-0"><span>Words: {{ wordCount }}</span><span>Last edited: {{ formatDateTime(editingNote.updatedAt) }}</span></div>
                 </div>
             </div>
@@ -247,7 +249,7 @@
     </div>
 
     <script>
-        const { createApp, ref, computed, onMounted, nextTick } = Vue;
+        const { createApp, ref, computed, onMounted, nextTick, reactive } = Vue;
 
         const app = createApp({
             setup() {
@@ -283,37 +285,19 @@
                 const showRenameModal = ref(false);
                 const renameInput = ref('');
 
+                // Image Resizer State
+                const currentImage = ref(null);
+                const resizerStyle = reactive({ top: '0px', left: '0px', width: '0px', height: '0px' });
+                const startX = ref(0);
+                const startWidth = ref(0);
+
                 const saveData = () => { localStorage.setItem('tagmaster-local', JSON.stringify({ notes: notes.value, tasks: tasks.value, tagOrder: tagOrder.value })); };
                 const exportData = () => { const dataStr = JSON.stringify({ notes: notes.value, tasks: tasks.value, tagOrder: tagOrder.value, exportedAt: new Date().toISOString() }, null, 2); const blob = new Blob([dataStr], {type: "application/json"}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `tagmaster-backup-${new Date().toISOString().split('T')[0]}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); };
                 const importData = (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const json = JSON.parse(e.target.result); if (Array.isArray(json.notes) || Array.isArray(json.tasks)) { pendingImport.value = json; showImportModal.value = true; } else { alert('Invalid backup file format.'); } } catch (err) { alert('Error parsing file.'); } event.target.value = ''; }; reader.readAsText(file); };
                 const executeImport = () => { if (!pendingImport.value) return; const source = pendingImport.value; if (importScope.value.notes) { if (importMode.value === 'replace') { notes.value = source.notes || []; } else { const existingIds = new Set(notes.value.map(n => n.id)); const newNotes = (source.notes || []).filter(n => !existingIds.has(n.id)); notes.value = [...notes.value, ...newNotes]; } } if (importScope.value.tasks) { if (importMode.value === 'replace') { tasks.value = source.tasks || []; } else { const existingIds = new Set(tasks.value.map(t => t.id)); const newTasks = (source.tasks || []).filter(t => !existingIds.has(t.id)); tasks.value = [...tasks.value, ...newTasks]; } } const isFullReplace = importMode.value === 'replace' && importScope.value.notes && importScope.value.tasks; if (isFullReplace) { tagOrder.value = source.tagOrder || []; } else { const newTags = source.tagOrder || []; const currentTags = new Set(tagOrder.value); newTags.forEach(t => { if (!currentTags.has(t)) tagOrder.value.push(t); }); } saveData(); showImportModal.value = false; pendingImport.value = null; alert('Import successful!'); };
                 
-                // NEW: Handle Task Input Focus (Lazy Pre-fill)
-                const onTaskFocus = () => {
-                    if (activeTag.value && !newTaskInput.value.trim()) {
-                        newTaskInput.value = `#${activeTag.value} `;
-                    }
-                };
-
-                // UPDATED: Set Filter Logic (Dynamic Update)
-                const setFilter = (tag) => { 
-                    const oldTagPrefix = activeTag.value ? `#${activeTag.value} ` : '';
-                    
-                    // If user hasn't typed anything else, update the pre-filled tag
-                    if (newTaskInput.value === oldTagPrefix) {
-                        if (tag) {
-                            newTaskInput.value = `#${tag} `;
-                        } else {
-                            newTaskInput.value = ''; // Clear if Dashboard
-                        }
-                    } else if (newTaskInput.value.trim() === '') {
-                        // Keep empty if user hasn't focused
-                    }
-
-                    activeTag.value = tag; 
-                    if(window.innerWidth < 768) sidebarOpen.value = false; 
-                };
-                
+                const onTaskFocus = () => { if (activeTag.value && !newTaskInput.value.trim()) { newTaskInput.value = `#${activeTag.value} `; } };
+                const setFilter = (tag) => { const oldTagPrefix = activeTag.value ? `#${activeTag.value} ` : ''; if (newTaskInput.value === oldTagPrefix) { if (tag) { newTaskInput.value = `#${tag} `; } else { newTaskInput.value = ''; } } activeTag.value = tag; if(window.innerWidth < 768) sidebarOpen.value = false; };
                 const highlightText = (text) => { if (!searchQuery.value) return text; const regex = new RegExp(`(${searchQuery.value})`, 'gi'); return text.replace(regex, '<span class="bg-yellow-200 text-black rounded px-0.5">$1</span>'); };
                 const getPreviewText = (html) => { if (!html) return ''; const tempDiv = document.createElement("div"); tempDiv.innerHTML = html; return tempDiv.textContent || tempDiv.innerText || ""; };
                 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -322,27 +306,7 @@
                 const formatRelativeTime = (d) => { const diff = Date.now() - new Date(d).getTime(); if(diff < 60000) return 'Just now'; if(diff < 86400000) return Math.floor(diff/3600000) + 'h ago'; return formatDateTime(d); };
                 const getDueDateColor = (task) => { if (task.completed) return 'text-gray-400'; return new Date(task.dueDate).getTime() < timeTrigger.value ? 'text-notion-red font-bold' : 'text-gray-400'; };
                 const detectedTags = computed(() => parseTags(newTaskInput.value));
-                
-                // UPDATED: Add Task Logic (Persist Tag for flow)
-                const addTask = () => { 
-                    if (!newTaskInput.value.trim()) return; 
-                    if (!newTaskDue.value) { taskError.value = true; setTimeout(() => taskError.value = false, 2000); return; } 
-                    const cleanTitle = newTaskInput.value.replace(TAG_REGEX, '').replace(/\s+/g, ' ').trim(); 
-                    const tags = parseTags(newTaskInput.value);
-                    tasks.value.push({ id: generateId(), title: cleanTitle || "Untitled", completed: false, dueDate: newTaskDue.value, tags: tags }); 
-                    
-                    // Reset input, but keep tag if filter is active
-                    if (activeTag.value) {
-                        newTaskInput.value = `#${activeTag.value} `;
-                    } else {
-                        newTaskInput.value = '';
-                    }
-                    
-                    newTaskDue.value = ''; 
-                    taskError.value = false; 
-                    saveData(); 
-                };
-                
+                const addTask = () => { if (!newTaskInput.value.trim()) return; if (!newTaskDue.value) { taskError.value = true; setTimeout(() => taskError.value = false, 2000); return; } const cleanTitle = newTaskInput.value.replace(TAG_REGEX, '').replace(/\s+/g, ' ').trim(); const tags = parseTags(newTaskInput.value); tasks.value.push({ id: generateId(), title: cleanTitle || "Untitled", completed: false, dueDate: newTaskDue.value, tags: tags }); if (activeTag.value) { newTaskInput.value = `#${activeTag.value} `; } else { newTaskInput.value = ''; } newTaskDue.value = ''; taskError.value = false; saveData(); };
                 const startEdit = (t) => { editingId.value = t.id; editTitle.value = t.title; editDue.value = t.dueDate; editTagsString.value = t.tags.map(tag => '#' + tag).join(' '); };
                 const saveEdit = () => { const t = tasks.value.find(x => x.id === editingId.value); if(t && editTitle.value.trim() && editDue.value){ t.title = editTitle.value; t.dueDate = editDue.value; const newTags = parseTags(editTagsString.value); t.tags = newTags.length > 0 ? newTags : []; saveData(); } editingId.value = null; };
                 const cancelEdit = () => { editingId.value = null; };
@@ -353,17 +317,16 @@
                 const filteredNotes = computed(() => { let res = notes.value; if (activeTag.value) { const filterLower = activeTag.value.toLowerCase(); res = res.filter(n => n.tags.some(t => t.toLowerCase() === filterLower)); } if (searchQuery.value) { const q = searchQuery.value.toLowerCase(); res = res.filter(n => getPreviewText(n.content).toLowerCase().includes(q) || n.tags.some(t => t.toLowerCase().includes(q))); } return res; });
                 const openRenameModal = () => { renameInput.value = activeTag.value; showRenameModal.value = true; };
                 const confirmRename = () => { if (!renameInput.value.trim() || renameInput.value === activeTag.value) { showRenameModal.value = false; return; } const oldLower = activeTag.value.toLowerCase(); const newTag = renameInput.value.trim(); notes.value.forEach(note => { if (note.tags.some(t => t.toLowerCase() === oldLower)) { note.tags = note.tags.map(t => t.toLowerCase() === oldLower ? newTag : t); note.tags = [...new Set(note.tags)]; } }); tasks.value.forEach(task => { if (task.tags.some(t => t.toLowerCase() === oldLower)) { task.tags = task.tags.map(t => t.toLowerCase() === oldLower ? newTag : t); task.tags = [...new Set(task.tags)]; } }); const orderIdx = tagOrder.value.findIndex(t => t.toLowerCase() === oldLower); if (orderIdx !== -1) { tagOrder.value[orderIdx] = newTag; } activeTag.value = newTag; saveData(); showRenameModal.value = false; };
-                const openEditor = (n) => { if (n) { originalNoteId.value = n.id; editingNote.value = JSON.parse(JSON.stringify(n)); } else { originalNoteId.value = null; const initialTags = activeTag.value ? [activeTag.value] : []; editingNote.value = { id: generateId(), content: '', tags: initialTags, updatedAt: Date.now() }; } tagInput.value = ''; };
+                const openEditor = (n) => { if (n) { originalNoteId.value = n.id; editingNote.value = JSON.parse(JSON.stringify(n)); } else { originalNoteId.value = null; const initialTags = activeTag.value ? [activeTag.value] : []; editingNote.value = { id: generateId(), content: '', tags: initialTags, updatedAt: Date.now() }; } tagInput.value = ''; currentImage.value = null; };
                 const startBackdropClick = () => { backdropClickStarted.value = true; };
                 const confirmBackdropClick = () => { if (backdropClickStarted.value) closeEditor(); backdropClickStarted.value = false; };
                 const confirmRenameBackdropClick = () => { if (backdropClickStarted.value) { showRenameModal.value = false; } backdropClickStarted.value = false; };
-                const closeEditor = () => { if (!editingNote.value) return; if (originalNoteId.value) { const idx = notes.value.findIndex(n => n.id === originalNoteId.value); if (idx !== -1) notes.value[idx] = editingNote.value; } else { if (editingNote.value.content.trim() || editingNote.value.tags.length > 0) notes.value.unshift(editingNote.value); } saveData(); editingNote.value = null; };
+                const closeEditor = () => { if (!editingNote.value) return; if (originalNoteId.value) { const idx = notes.value.findIndex(n => n.id === originalNoteId.value); if (idx !== -1) notes.value[idx] = editingNote.value; } else { if (editingNote.value.content.trim() || editingNote.value.tags.length > 0) notes.value.unshift(editingNote.value); } saveData(); editingNote.value = null; currentImage.value = null; };
                 const onEditorInput = (e) => { editingNote.value.content = e.target.innerHTML; editingNote.value.updatedAt = Date.now(); saveData(); };
                 const deleteCurrentNote = () => { if (confirm('Delete?')) { if (originalNoteId.value) notes.value = notes.value.filter(n => n.id !== originalNoteId.value); saveData(); editingNote.value = null; }};
                 const execCmd = (c, v = null) => { document.execCommand(c, false, v); };
                 const changeFontSize = (e) => { execCmd('fontSize', e.target.value); };
                 const insertCheckbox = () => { const sel = window.getSelection(); if (!sel.rangeCount) return; const range = sel.getRangeAt(0); if (sel.isCollapsed) { document.execCommand('insertHTML', false, '<input type="checkbox">&nbsp;'); } else { const frag = range.extractContents(); const tempDiv = document.createElement('div'); tempDiv.appendChild(frag); let html = tempDiv.innerHTML; if (html.includes('<div') || html.includes('<p')) { html = html.replace(/<(div|p)([^>]*)>/gi, '<$1$2><input type="checkbox">&nbsp;'); } else { html = `<div><input type="checkbox">&nbsp;${html}</div>`; } document.execCommand('insertHTML', false, html); } onEditorInput({ target: editorRef.value }); };
-                const handleEditorClick = (e) => { if (e.target.tagName === 'INPUT' && e.target.type === 'checkbox') { if (e.target.hasAttribute('checked')) { e.target.removeAttribute('checked'); } else { e.target.setAttribute('checked', 'checked'); } onEditorInput({ target: editorRef.value }); } };
                 const handleEditorKeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { const sel = window.getSelection(); if (!sel.rangeCount) return; let currentNode = sel.anchorNode; if (currentNode.nodeType === 3) currentNode = currentNode.parentNode; let block = currentNode; while (block && block.parentNode !== editorRef.value && block !== editorRef.value) { block = block.parentNode; } if (!block || block === editorRef.value) return; const checkbox = block.querySelector('input[type="checkbox"]'); if (checkbox) { const clone = block.cloneNode(true); const cloneCb = clone.querySelector('input[type="checkbox"]'); if (cloneCb) cloneCb.remove(); const text = clone.textContent.replace(/[\s\u00A0]/g, ''); if (text === '') { e.preventDefault(); checkbox.remove(); onEditorInput({ target: editorRef.value }); } else { setTimeout(() => { document.execCommand('insertHTML', false, '<input type="checkbox">&nbsp;'); onEditorInput({ target: editorRef.value }); }, 0); } } } };
                 const copyFormat = () => { copiedStyle.value = { bold: document.queryCommandState('bold'), italic: document.queryCommandState('italic'), underline: document.queryCommandState('underline'), strikethrough: document.queryCommandState('strikethrough'), foreColor: document.queryCommandValue('foreColor'), hiliteColor: document.queryCommandValue('hiliteColor'), fontSize: document.queryCommandValue('fontSize') }; };
                 const pasteFormat = () => { if(!copiedStyle.value) return; const s = copiedStyle.value; if(document.queryCommandState('bold') !== s.bold) execCmd('bold'); if(document.queryCommandState('italic') !== s.italic) execCmd('italic'); if(document.queryCommandState('underline') !== s.underline) execCmd('underline'); if(document.queryCommandState('strikethrough') !== s.strikethrough) execCmd('strikeThrough'); execCmd('foreColor', s.foreColor); execCmd('hiliteColor', s.hiliteColor); execCmd('fontSize', s.fontSize); };
@@ -373,6 +336,63 @@
                 const removeTag = (t) => { editingNote.value.tags = editingNote.value.tags.filter(x => x !== t); };
                 const onTagBackspace = () => { if (tagInput.value === '' && editingNote.value.tags.length > 0) editingNote.value.tags.pop(); };
                 const wordCount = computed(() => { if (!editingNote.value) return 0; return editingNote.value.content.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).filter(w => w.length > 0).length; });
+
+                // --- IMAGE RESIZING LOGIC ---
+                const updateResizerPosition = () => {
+                    if (!currentImage.value || !editorRef.value) return;
+                    const imgRect = currentImage.value.getBoundingClientRect();
+                    const containerRect = editorRef.value.parentElement.getBoundingClientRect();
+                    
+                    // Offset relative to the container
+                    resizerStyle.top = (imgRect.top - containerRect.top + editorRef.value.parentElement.scrollTop) + 'px';
+                    resizerStyle.left = (imgRect.left - containerRect.left + editorRef.value.parentElement.scrollLeft) + 'px';
+                    resizerStyle.width = imgRect.width + 'px';
+                    resizerStyle.height = imgRect.height + 'px';
+                };
+
+                const handleEditorClick = (e) => {
+                    // Checkbox toggle logic
+                    if (e.target.tagName === 'INPUT' && e.target.type === 'checkbox') {
+                        if (e.target.hasAttribute('checked')) { e.target.removeAttribute('checked'); } else { e.target.setAttribute('checked', 'checked'); }
+                        onEditorInput({ target: editorRef.value });
+                        return;
+                    }
+                    
+                    // Image selection logic
+                    if (e.target.tagName === 'IMG') {
+                        currentImage.value = e.target;
+                        updateResizerPosition();
+                    } else {
+                        currentImage.value = null; // Deselect on click elsewhere
+                    }
+                };
+
+                const startResize = (e) => {
+                    startX.value = e.clientX || e.touches[0].clientX;
+                    startWidth.value = currentImage.value.offsetWidth;
+                    window.addEventListener('mousemove', doResize);
+                    window.addEventListener('mouseup', stopResize);
+                    window.addEventListener('touchmove', doResize);
+                    window.addEventListener('touchend', stopResize);
+                };
+
+                const doResize = (e) => {
+                    if (!currentImage.value) return;
+                    const clientX = e.clientX || e.touches[0].clientX;
+                    const newWidth = startWidth.value + (clientX - startX.value);
+                    if (newWidth > 50) {
+                        currentImage.value.style.width = newWidth + 'px';
+                        updateResizerPosition();
+                    }
+                };
+
+                const stopResize = () => {
+                    window.removeEventListener('mousemove', doResize);
+                    window.removeEventListener('mouseup', stopResize);
+                    window.removeEventListener('touchmove', doResize);
+                    window.removeEventListener('touchend', stopResize);
+                    onEditorInput({ target: editorRef.value }); // Save change
+                };
 
                 onMounted(() => {
                     if (tagListRef.value) { new Sortable(tagListRef.value, { animation: 150, ghostClass: 'opacity-40', onEnd: (evt) => { const items = evt.to.children; const newOrder = []; for(let i=0; i<items.length; i++) newOrder.push(items[i].getAttribute('data-id')); tagOrder.value = newOrder; saveData(); }}); }
@@ -391,7 +411,9 @@
                     tagInput, tagSuggestions, addTag, addSuggestedTag, removeTag, onTagBackspace, tagInputRef,
                     exportData, importData, fileInput, showImportModal, pendingImport, importScope, importMode, executeImport,
                     openRenameModal, showRenameModal, renameInput, confirmRename, confirmRenameBackdropClick,
-                    onTaskFocus // Added focus handler
+                    onTaskFocus,
+                    // Resizer
+                    currentImage, resizerStyle, startResize, updateResizerPosition
                 };
             }
         });
