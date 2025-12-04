@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="format-detection" content="telephone=no">
-    <title>TagMaster v7.9</title>
+    <title>TagMaster v8.0</title>
     
     <!-- FAVICON -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23F97316'/><path d='M30 35h40M30 55h40M30 75h25' stroke='white' stroke-width='8' stroke-linecap='round'/></svg>">
@@ -91,7 +91,7 @@
             <div class="p-4 flex items-center justify-between font-bold select-none text-notion-text">
                 <div class="flex items-center gap-2">
                     <div class="w-6 h-6 bg-orange-500 text-white flex items-center justify-center rounded text-xs"><i class="ph-bold ph-note text-sm"></i></div>
-                    <span>TagMaster v7.9</span>
+                    <span>TagMaster v8.0</span>
                 </div>
                 <button @click="sidebarOpen = false" class="md:hidden text-notion-dim p-1"><i class="ph ph-caret-left"></i></button>
             </div>
@@ -280,7 +280,16 @@
                 const exportData = () => { const dataStr = JSON.stringify({ notes: notes.value, tasks: tasks.value, tagOrder: tagOrder.value, exportedAt: new Date().toISOString() }, null, 2); const blob = new Blob([dataStr], {type: "application/json"}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `tagmaster-backup-${new Date().toISOString().split('T')[0]}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); };
                 const importData = (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const json = JSON.parse(e.target.result); if (Array.isArray(json.notes) || Array.isArray(json.tasks)) { pendingImport.value = json; showImportModal.value = true; } else { alert('Invalid backup file format.'); } } catch (err) { alert('Error parsing file.'); } event.target.value = ''; }; reader.readAsText(file); };
                 const executeImport = () => { if (!pendingImport.value) return; const source = pendingImport.value; if (importScope.value.notes) { if (importMode.value === 'replace') { notes.value = source.notes || []; } else { const existingIds = new Set(notes.value.map(n => n.id)); const newNotes = (source.notes || []).filter(n => !existingIds.has(n.id)); notes.value = [...notes.value, ...newNotes]; } } if (importScope.value.tasks) { if (importMode.value === 'replace') { tasks.value = source.tasks || []; } else { const existingIds = new Set(tasks.value.map(t => t.id)); const newTasks = (source.tasks || []).filter(t => !existingIds.has(t.id)); tasks.value = [...tasks.value, ...newTasks]; } } const isFullReplace = importMode.value === 'replace' && importScope.value.notes && importScope.value.tasks; if (isFullReplace) { tagOrder.value = source.tagOrder || []; } else { const newTags = source.tagOrder || []; const currentTags = new Set(tagOrder.value); newTags.forEach(t => { if (!currentTags.has(t)) tagOrder.value.push(t); }); } saveData(); showImportModal.value = false; pendingImport.value = null; alert('Import successful!'); };
-                const setFilter = (tag) => { activeTag.value = tag; if(window.innerWidth < 768) sidebarOpen.value = false; };
+                
+                // 1. UPDATED setFilter: Pre-fill input
+                const setFilter = (tag) => { 
+                    activeTag.value = tag; 
+                    if (tag && newTaskInput.value.trim() === '') {
+                        newTaskInput.value = `#${tag} `;
+                    }
+                    if(window.innerWidth < 768) sidebarOpen.value = false; 
+                };
+                
                 const highlightText = (text) => { if (!searchQuery.value) return text; const regex = new RegExp(`(${searchQuery.value})`, 'gi'); return text.replace(regex, '<span class="bg-yellow-200 text-black rounded px-0.5">$1</span>'); };
                 const getPreviewText = (html) => { if (!html) return ''; const tempDiv = document.createElement("div"); tempDiv.innerHTML = html; return tempDiv.textContent || tempDiv.innerText || ""; };
                 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -289,7 +298,28 @@
                 const formatRelativeTime = (d) => { const diff = Date.now() - new Date(d).getTime(); if(diff < 60000) return 'Just now'; if(diff < 86400000) return Math.floor(diff/3600000) + 'h ago'; return formatDateTime(d); };
                 const getDueDateColor = (task) => { if (task.completed) return 'text-gray-400'; return new Date(task.dueDate).getTime() < timeTrigger.value ? 'text-notion-red font-bold' : 'text-gray-400'; };
                 const detectedTags = computed(() => parseTags(newTaskInput.value));
-                const addTask = () => { if (!newTaskInput.value.trim()) return; if (!newTaskDue.value) { taskError.value = true; setTimeout(() => taskError.value = false, 2000); return; } const cleanTitle = newTaskInput.value.replace(TAG_REGEX, '').replace(/\s+/g, ' ').trim(); tasks.value.push({ id: generateId(), title: cleanTitle || "Untitled", completed: false, dueDate: newTaskDue.value, tags: parseTags(newTaskInput.value) }); newTaskInput.value = ''; newTaskDue.value = ''; taskError.value = false; saveData(); };
+                
+                // 2. UPDATED addTask: Reset logic
+                const addTask = () => { 
+                    if (!newTaskInput.value.trim()) return; 
+                    if (!newTaskDue.value) { taskError.value = true; setTimeout(() => taskError.value = false, 2000); return; } 
+                    
+                    const cleanTitle = newTaskInput.value.replace(TAG_REGEX, '').replace(/\s+/g, ' ').trim(); 
+                    const tags = parseTags(newTaskInput.value);
+                    
+                    tasks.value.push({ id: generateId(), title: cleanTitle || "Untitled", completed: false, dueDate: newTaskDue.value, tags: tags }); 
+                    
+                    // Reset input, but keep tag if filter is active
+                    if (activeTag.value) {
+                        newTaskInput.value = `#${activeTag.value} `;
+                    } else {
+                        newTaskInput.value = '';
+                    }
+                    
+                    newTaskDue.value = ''; 
+                    taskError.value = false; 
+                    saveData(); 
+                };
                 
                 // Enhanced Task Edit
                 const startEdit = (t) => { 
@@ -415,7 +445,24 @@
                     showRenameModal.value = false;
                 };
 
-                const openEditor = (n) => { if (n) { originalNoteId.value = n.id; editingNote.value = JSON.parse(JSON.stringify(n)); } else { originalNoteId.value = null; editingNote.value = { id: generateId(), content: '', tags: [], updatedAt: Date.now() }; } tagInput.value = ''; };
+                // 3. UPDATED openEditor: Pre-fill tag in new note
+                const openEditor = (n) => { 
+                    if (n) { 
+                        originalNoteId.value = n.id; 
+                        editingNote.value = JSON.parse(JSON.stringify(n)); 
+                    } else { 
+                        originalNoteId.value = null; 
+                        // Auto-add active tag
+                        const initialTags = activeTag.value ? [activeTag.value] : [];
+                        editingNote.value = { 
+                            id: generateId(), 
+                            content: '', 
+                            tags: initialTags, 
+                            updatedAt: Date.now() 
+                        }; 
+                    } 
+                    tagInput.value = ''; 
+                };
                 
                 // BACKDROP CLICK FIX
                 const startBackdropClick = () => { backdropClickStarted.value = true; };
