@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="format-detection" content="telephone=no">
-    <title>TagMaster v8.2</title>
+    <title>TagMaster v8.3</title>
     
     <!-- FAVICON -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23F97316'/><path d='M30 35h40M30 55h40M30 75h25' stroke='white' stroke-width='8' stroke-linecap='round'/></svg>">
@@ -35,6 +35,7 @@
             }
         }
     </script>
+    <!-- FIX: Added reactive to destructuring later in script, ensuring Vue works correctly -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -47,8 +48,9 @@
         ::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
         [contenteditable]:focus { outline: none; }
         
-        .modal-editor { min-height: 300px; max-height: 60vh; line-height: 1.7; font-size: 1.05rem; } /* Removed overflow-y here, handled by parent */
+        .modal-editor { min-height: 300px; max-height: 60vh; overflow-y: auto; line-height: 1.7; font-size: 1.05rem; }
         .modal-editor:empty:before { content: attr(data-placeholder); color: #9B9A97; pointer-events: none; display: block; }
+        
         .modal-editor ul { list-style-type: disc; margin-left: 1.5em; }
         .modal-editor ol { list-style-type: decimal; margin-left: 1.5em; }
         .modal-editor h1 { font-size: 1.8em; font-weight: 700; margin-top: 0.8em; margin-bottom: 0.4em; }
@@ -56,8 +58,9 @@
         .modal-editor blockquote { border-left: 4px solid #E0E0E0; padding-left: 1em; color: #666; font-style: italic; margin: 0.5em 0; }
         .modal-editor span[style*="background-color"] { border-radius: 4px; padding: 0 2px; }
         
-        /* Images inside editor */
+        /* Ensure images inside editor don't break layout */
         .modal-editor img { max-width: 100%; cursor: default; }
+        /* Add a subtle outline on hover to indicate interactability */
         .modal-editor img:hover { outline: 2px solid #E9E9E7; }
 
         .modal-editor input[type="checkbox"] {
@@ -95,7 +98,7 @@
             <div class="p-4 flex items-center justify-between font-bold select-none text-notion-text">
                 <div class="flex items-center gap-2">
                     <div class="w-6 h-6 bg-orange-500 text-white flex items-center justify-center rounded text-xs"><i class="ph-bold ph-note text-sm"></i></div>
-                    <span>TagMaster v8.2</span>
+                    <span>TagMaster v8.3</span>
                 </div>
                 <button @click="sidebarOpen = false" class="md:hidden text-notion-dim p-1"><i class="ph ph-caret-left"></i></button>
             </div>
@@ -139,10 +142,7 @@
                     <section class="mb-10">
                         <h2 class="text-xs font-bold text-notion-dim uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Tasks</h2>
                         <div class="relative group mb-4 bg-white border border-gray-200 rounded-lg p-2 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all shadow-sm" :class="{'border-red-400 ring-2 ring-red-100 shake': taskError}">
-                            <div class="flex flex-col md:flex-row gap-2">
-                                <div class="flex items-center gap-2 flex-1"><i class="ph ph-plus text-gray-400 ml-1"></i><input type="text" v-model="newTaskInput" @focus="onTaskFocus" @keyup.enter="addTask" placeholder="Add task... (e.g. Buy milk #home)" class="flex-1 px-1 py-1 outline-none text-sm bg-transparent min-w-0"></div>
-                                <div class="flex items-center gap-2 border-t md:border-t-0 md:border-l border-gray-100 pt-2 md:pt-0 md:pl-2"><input type="datetime-local" v-model="newTaskDue" style="color-scheme: light;" class="flex-1 md:flex-none w-full md:w-auto text-xs text-gray-900 bg-white rounded px-2 outline-none border transition-colors font-mono" :class="taskError ? 'border-red-500' : 'border-gray-300'"><button @click="addTask" class="h-9 px-4 bg-notion-text text-white rounded-md text-xs font-medium hover:opacity-90 whitespace-nowrap">Add</button></div>
-                            </div>
+                            <div class="flex flex-col md:flex-row gap-2"><div class="flex items-center gap-2 flex-1"><i class="ph ph-plus text-gray-400 ml-1"></i><input type="text" v-model="newTaskInput" @focus="onTaskFocus" @keyup.enter="addTask" placeholder="Add task... (e.g. Buy milk #home)" class="flex-1 px-1 py-1 outline-none text-sm bg-transparent min-w-0"></div><div class="flex items-center gap-2 border-t md:border-t-0 md:border-l border-gray-100 pt-2 md:pt-0 md:pl-2"><input type="datetime-local" v-model="newTaskDue" style="color-scheme: light;" class="flex-1 md:flex-none w-full md:w-auto text-xs text-gray-900 bg-white rounded px-2 outline-none border transition-colors font-mono" :class="taskError ? 'border-red-500' : 'border-gray-300'"><button @click="addTask" class="h-9 px-4 bg-notion-text text-white rounded-md text-xs font-medium hover:opacity-90 whitespace-nowrap">Add</button></div></div>
                             <div v-if="detectedTags.length > 0" class="absolute -bottom-6 left-2 flex gap-1"><span v-for="tag in detectedTags" :key="tag" class="text-[10px] bg-blue-50 text-blue-600 px-1.5 rounded animate-pulse">#{{ tag }} will be added</span></div><div v-if="taskError" class="absolute -bottom-6 right-0 text-[10px] text-red-500 font-bold">* Due date required</div>
                         </div>
                         <div class="space-y-1">
@@ -166,10 +166,12 @@
                 </div>
             </div>
 
-            <!-- EDITOR MODAL (WITH IMAGE RESIZER) -->
+            <!-- EDITOR MODAL (WITH FIXES: Z-INDEX, SELECTION) -->
             <div v-if="editingNote" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4 animate-fade-in" @mousedown.self="startBackdropClick" @click.self="confirmBackdropClick">
                 <div class="bg-white w-full max-w-4xl rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-slide-up">
-                    <div class="flex items-center gap-1 p-2 border-b border-gray-100 bg-gray-50 text-notion-text shrink-0 overflow-x-auto no-scrollbar">
+                    
+                    <!-- TOOLBAR FIX: relative z-20 to stay on top of content/resizer -->
+                    <div class="flex items-center gap-1 p-2 border-b border-gray-100 bg-gray-50 text-notion-text shrink-0 overflow-x-auto no-scrollbar relative z-20">
                         <button @click="closeEditor" class="p-2 hover:bg-gray-200 rounded mr-2 flex-shrink-0"><i class="ph ph-x text-lg"></i></button>
                         <div class="h-6 w-px bg-gray-300 mx-1 flex-shrink-0"></div>
                         <select @change="changeFontSize" class="bg-transparent text-xs border border-gray-200 rounded px-1 py-1 mr-1 focus:outline-none hover:bg-white cursor-pointer"><option value="3">Normal</option><option value="1">Small</option><option value="5">Large</option><option value="7">Huge</option></select>
@@ -196,8 +198,8 @@
                         <div class="h-px w-full bg-gray-100 mt-2"></div>
                     </div>
                     
-                    <!-- EDITOR CONTENT WRAPPER (Relative for overlay) -->
-                    <div class="flex-1 overflow-y-auto px-8 pb-8 pt-4 cursor-text relative" @click.self="$refs.editorRef.focus()">
+                    <!-- EDITOR CONTENT WRAPPER -->
+                    <div class="flex-1 overflow-y-auto px-8 pb-8 pt-4 cursor-text relative z-0" @click.self="$refs.editorRef.focus()">
                         <div ref="editorRef" 
                              class="modal-editor outline-none text-notion-text" 
                              contenteditable="true" 
@@ -206,14 +208,13 @@
                              @input="onEditorInput"
                              @click="handleEditorClick"
                              @keydown="handleEditorKeydown"
-                             @scroll="updateResizerPosition"> <!-- Add scroll listener -->
+                             @scroll="updateResizerPosition">
                         </div>
 
                         <!-- Image Resizer Overlay -->
                         <div v-if="currentImage" 
                              class="absolute border-2 border-blue-500 pointer-events-none z-10"
                              :style="resizerStyle">
-                             <!-- Handle -->
                              <div class="absolute bottom-[-6px] right-[-6px] w-4 h-4 bg-blue-500 rounded-full cursor-se-resize pointer-events-auto border-2 border-white shadow-sm"
                                   @mousedown.prevent="startResize"
                                   @touchstart.prevent="startResize">
@@ -249,6 +250,7 @@
     </div>
 
     <script>
+        // FIX: Import reactive explicitly
         const { createApp, ref, computed, onMounted, nextTick, reactive } = Vue;
 
         const app = createApp({
@@ -322,12 +324,38 @@
                 const confirmBackdropClick = () => { if (backdropClickStarted.value) closeEditor(); backdropClickStarted.value = false; };
                 const confirmRenameBackdropClick = () => { if (backdropClickStarted.value) { showRenameModal.value = false; } backdropClickStarted.value = false; };
                 const closeEditor = () => { if (!editingNote.value) return; if (originalNoteId.value) { const idx = notes.value.findIndex(n => n.id === originalNoteId.value); if (idx !== -1) notes.value[idx] = editingNote.value; } else { if (editingNote.value.content.trim() || editingNote.value.tags.length > 0) notes.value.unshift(editingNote.value); } saveData(); editingNote.value = null; currentImage.value = null; };
-                const onEditorInput = (e) => { editingNote.value.content = e.target.innerHTML; editingNote.value.updatedAt = Date.now(); saveData(); };
+                
+                // NEW: Validate Image on Input
+                const onEditorInput = (e) => { 
+                    editingNote.value.content = e.target.innerHTML; 
+                    editingNote.value.updatedAt = Date.now(); 
+                    
+                    // If current image was deleted, hide overlay
+                    if (currentImage.value && !document.contains(currentImage.value)) {
+                        currentImage.value = null;
+                    }
+                    saveData(); 
+                };
+                
                 const deleteCurrentNote = () => { if (confirm('Delete?')) { if (originalNoteId.value) notes.value = notes.value.filter(n => n.id !== originalNoteId.value); saveData(); editingNote.value = null; }};
                 const execCmd = (c, v = null) => { document.execCommand(c, false, v); };
                 const changeFontSize = (e) => { execCmd('fontSize', e.target.value); };
                 const insertCheckbox = () => { const sel = window.getSelection(); if (!sel.rangeCount) return; const range = sel.getRangeAt(0); if (sel.isCollapsed) { document.execCommand('insertHTML', false, '<input type="checkbox">&nbsp;'); } else { const frag = range.extractContents(); const tempDiv = document.createElement('div'); tempDiv.appendChild(frag); let html = tempDiv.innerHTML; if (html.includes('<div') || html.includes('<p')) { html = html.replace(/<(div|p)([^>]*)>/gi, '<$1$2><input type="checkbox">&nbsp;'); } else { html = `<div><input type="checkbox">&nbsp;${html}</div>`; } document.execCommand('insertHTML', false, html); } onEditorInput({ target: editorRef.value }); };
-                const handleEditorKeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { const sel = window.getSelection(); if (!sel.rangeCount) return; let currentNode = sel.anchorNode; if (currentNode.nodeType === 3) currentNode = currentNode.parentNode; let block = currentNode; while (block && block.parentNode !== editorRef.value && block !== editorRef.value) { block = block.parentNode; } if (!block || block === editorRef.value) return; const checkbox = block.querySelector('input[type="checkbox"]'); if (checkbox) { const clone = block.cloneNode(true); const cloneCb = clone.querySelector('input[type="checkbox"]'); if (cloneCb) cloneCb.remove(); const text = clone.textContent.replace(/[\s\u00A0]/g, ''); if (text === '') { e.preventDefault(); checkbox.remove(); onEditorInput({ target: editorRef.value }); } else { setTimeout(() => { document.execCommand('insertHTML', false, '<input type="checkbox">&nbsp;'); onEditorInput({ target: editorRef.value }); }, 0); } } } };
+                
+                // NEW: Keydown Logic (Includes Delete Image fix)
+                const handleEditorKeydown = (e) => { 
+                    // Delete/Backspace when image is selected
+                    if ((e.key === 'Backspace' || e.key === 'Delete') && currentImage.value) {
+                        e.preventDefault();
+                        currentImage.value.remove();
+                        currentImage.value = null;
+                        onEditorInput({ target: editorRef.value });
+                        return;
+                    }
+
+                    if (e.key === 'Enter' && !e.shiftKey) { const sel = window.getSelection(); if (!sel.rangeCount) return; let currentNode = sel.anchorNode; if (currentNode.nodeType === 3) currentNode = currentNode.parentNode; let block = currentNode; while (block && block.parentNode !== editorRef.value && block !== editorRef.value) { block = block.parentNode; } if (!block || block === editorRef.value) return; const checkbox = block.querySelector('input[type="checkbox"]'); if (checkbox) { const clone = block.cloneNode(true); const cloneCb = clone.querySelector('input[type="checkbox"]'); if (cloneCb) cloneCb.remove(); const text = clone.textContent.replace(/[\s\u00A0]/g, ''); if (text === '') { e.preventDefault(); checkbox.remove(); onEditorInput({ target: editorRef.value }); } else { setTimeout(() => { document.execCommand('insertHTML', false, '<input type="checkbox">&nbsp;'); onEditorInput({ target: editorRef.value }); }, 0); } } } 
+                };
+                
                 const copyFormat = () => { copiedStyle.value = { bold: document.queryCommandState('bold'), italic: document.queryCommandState('italic'), underline: document.queryCommandState('underline'), strikethrough: document.queryCommandState('strikethrough'), foreColor: document.queryCommandValue('foreColor'), hiliteColor: document.queryCommandValue('hiliteColor'), fontSize: document.queryCommandValue('fontSize') }; };
                 const pasteFormat = () => { if(!copiedStyle.value) return; const s = copiedStyle.value; if(document.queryCommandState('bold') !== s.bold) execCmd('bold'); if(document.queryCommandState('italic') !== s.italic) execCmd('italic'); if(document.queryCommandState('underline') !== s.underline) execCmd('underline'); if(document.queryCommandState('strikethrough') !== s.strikethrough) execCmd('strikeThrough'); execCmd('foreColor', s.foreColor); execCmd('hiliteColor', s.hiliteColor); execCmd('fontSize', s.fontSize); };
                 const tagSuggestions = computed(() => { if (!tagInput.value) return []; return sortedTags.value.filter(t => t.toLowerCase().includes(tagInput.value.toLowerCase()) && !editingNote.value.tags.includes(t)); });
@@ -337,13 +365,11 @@
                 const onTagBackspace = () => { if (tagInput.value === '' && editingNote.value.tags.length > 0) editingNote.value.tags.pop(); };
                 const wordCount = computed(() => { if (!editingNote.value) return 0; return editingNote.value.content.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).filter(w => w.length > 0).length; });
 
-                // --- IMAGE RESIZING LOGIC ---
                 const updateResizerPosition = () => {
                     if (!currentImage.value || !editorRef.value) return;
                     const imgRect = currentImage.value.getBoundingClientRect();
                     const containerRect = editorRef.value.parentElement.getBoundingClientRect();
                     
-                    // Offset relative to the container
                     resizerStyle.top = (imgRect.top - containerRect.top + editorRef.value.parentElement.scrollTop) + 'px';
                     resizerStyle.left = (imgRect.left - containerRect.left + editorRef.value.parentElement.scrollLeft) + 'px';
                     resizerStyle.width = imgRect.width + 'px';
@@ -351,19 +377,24 @@
                 };
 
                 const handleEditorClick = (e) => {
-                    // Checkbox toggle logic
                     if (e.target.tagName === 'INPUT' && e.target.type === 'checkbox') {
                         if (e.target.hasAttribute('checked')) { e.target.removeAttribute('checked'); } else { e.target.setAttribute('checked', 'checked'); }
                         onEditorInput({ target: editorRef.value });
                         return;
                     }
                     
-                    // Image selection logic
                     if (e.target.tagName === 'IMG') {
                         currentImage.value = e.target;
                         updateResizerPosition();
+                        
+                        // FIX: Force Native Selection for Copy/Cut
+                        const range = document.createRange();
+                        range.selectNode(e.target);
+                        const sel = window.getSelection();
+                        sel.removeAllRanges();
+                        sel.addRange(range);
                     } else {
-                        currentImage.value = null; // Deselect on click elsewhere
+                        currentImage.value = null; 
                     }
                 };
 
@@ -391,7 +422,7 @@
                     window.removeEventListener('mouseup', stopResize);
                     window.removeEventListener('touchmove', doResize);
                     window.removeEventListener('touchend', stopResize);
-                    onEditorInput({ target: editorRef.value }); // Save change
+                    onEditorInput({ target: editorRef.value }); 
                 };
 
                 onMounted(() => {
@@ -412,7 +443,6 @@
                     exportData, importData, fileInput, showImportModal, pendingImport, importScope, importMode, executeImport,
                     openRenameModal, showRenameModal, renameInput, confirmRename, confirmRenameBackdropClick,
                     onTaskFocus,
-                    // Resizer
                     currentImage, resizerStyle, startResize, updateResizerPosition
                 };
             }
