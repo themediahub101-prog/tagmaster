@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="format-detection" content="telephone=no">
-    <title>TagMaster v9.2</title>
+    <title>TagMaster v9.3</title>
     
     <!-- FAVICON -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23F97316'/><path d='M30 35h40M30 55h40M30 75h25' stroke='white' stroke-width='8' stroke-linecap='round'/></svg>">
@@ -99,7 +99,7 @@
             <div class="p-4 flex items-center justify-between font-bold select-none text-notion-text">
                 <div class="flex items-center gap-2">
                     <div class="w-6 h-6 bg-orange-500 text-white flex items-center justify-center rounded text-xs"><i class="ph-bold ph-note text-sm"></i></div>
-                    <span>TagMaster v9.2</span>
+                    <span>TagMaster v9.3</span>
                 </div>
                 <button @click="sidebarOpen = false" class="md:hidden text-notion-dim p-1"><i class="ph ph-caret-left"></i></button>
             </div>
@@ -162,10 +162,8 @@
                         <div class="flex gap-2 overflow-x-auto no-scrollbar py-2 mb-4"><button @click="setFilter(null)" class="whitespace-nowrap px-3 py-1 rounded-full text-xs border transition-colors" :class="activeTag === null ? 'bg-gray-800 text-white border-gray-800' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'">All</button><button v-for="tag in sortedTags" :key="tag" @click="setFilter(tag)" class="whitespace-nowrap px-3 py-1 rounded-full text-xs border transition-colors" :class="activeTag === tag ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:border-blue-300'">#{{ tag }}</button></div>
                         <div v-if="filteredNotes.length === 0" class="text-center py-10 bg-gray-50 rounded-lg border border-dashed border-gray-200"><p class="text-sm text-gray-400">{{ searchQuery ? 'No notes found.' : 'No notes here.' }}</p></div>
                         <div class="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4">
-                            <!-- MODIFIED NOTE CARD TO SHOW TITLE -->
                             <div v-for="note in filteredNotes" :key="note.id" @click="openEditor(note)" class="break-inside-avoid bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer transition-all hover:-translate-y-0.5 group flex flex-col relative overflow-hidden">
                                 <div class="mb-3 max-h-32 overflow-hidden relative">
-                                    <!-- TITLE DISPLAY -->
                                     <div class="font-bold text-gray-900 mb-1 text-sm truncate">{{ note.title || 'Untitled' }}</div>
                                     <div v-if="!note.content" class="text-gray-300 italic text-xs">Empty note...</div>
                                     <div v-else class="preview-text text-xs text-gray-600">{{ getPreviewText(note.content) }}</div>
@@ -206,10 +204,8 @@
                     </div>
                     <div class="px-8 pt-6 pb-2 shrink-0">
                         <div class="flex flex-wrap items-center gap-2 mb-2"><i class="ph ph-tag text-gray-400"></i><div v-for="tag in editingNote.tags" :key="tag" class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-sm flex items-center gap-1">{{ tag }} <button @click="removeTag(tag)" class="hover:text-blue-900"><i class="ph ph-x"></i></button></div><div class="relative"><input ref="tagInputRef" type="text" v-model="tagInput" @keydown.enter.prevent="addTag" @keydown.backspace="onTagBackspace" placeholder="Add tag..." class="outline-none text-sm min-w-[80px] py-1 bg-transparent placeholder-gray-300"><div v-if="tagSuggestions.length > 0" class="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 shadow-lg rounded-md z-50 py-1 max-h-40 overflow-y-auto"><div v-for="sug in tagSuggestions" :key="sug" @click="addSuggestedTag(sug)" class="px-3 py-1.5 hover:bg-gray-100 text-sm cursor-pointer text-gray-700">#{{ sug }}</div></div></div></div>
-                        
-                        <!-- NEW TITLE INPUT FIELD -->
+                        <!-- TITLE INPUT -->
                         <input type="text" v-model="editingNote.title" @input="onTitleInput" class="w-full text-2xl font-bold text-gray-800 placeholder-gray-300 outline-none bg-transparent mb-2 px-1" placeholder="Note Title">
-                        
                         <div class="h-px w-full bg-gray-100 mt-1"></div>
                     </div>
                     <div class="flex-1 overflow-y-auto px-8 pb-8 pt-4 cursor-text relative z-0" @click.self="$refs.editorRef.focus()">
@@ -359,6 +355,7 @@
                 const tagListRef = ref(null);
                 const fileInput = ref(null);
                 const dbStatus = ref('Ready');
+                const isReady = ref(false); // WRITE PROTECTION FLAG
 
                 // Data
                 const notes = ref([]);
@@ -395,37 +392,50 @@
                 // --- NEW LOAD DATA (Granular) ---
                 const loadData = async () => {
                     try {
-                        // 1. Check for LS migration first (For users coming from v8.4)
-                        const ls = localStorage.getItem('tagmaster-local');
-                        if (ls) {
-                            console.log("Migrating from LocalStorage to IndexedDB...");
-                            const parsed = JSON.parse(ls);
-                            await dbBatchSave(parsed.notes || [], parsed.tasks || [], parsed.tagOrder || []);
-                            localStorage.removeItem('tagmaster-local'); // Clear LS after migration
-                        }
-
-                        // 2. Load from IDB
                         const [dbNotes, dbTasks, dbMeta] = await Promise.all([
                             dbGetAll('notes'),
                             dbGetAll('tasks'),
                             dbGet('meta', 'tag_order')
                         ]);
                         
-                        notes.value = dbNotes || [];
-                        tasks.value = dbTasks || [];
-                        tagOrder.value = dbMeta ? dbMeta.value : [];
+                        const hasIDBData = (dbNotes && dbNotes.length > 0) || (dbTasks && dbTasks.length > 0);
+
+                        // 2. Check for LS migration (Legacy fallback)
+                        const ls = localStorage.getItem('tagmaster-local');
+                        
+                        if (ls && !hasIDBData) {
+                            console.log("Migrating from LocalStorage to IndexedDB...");
+                            const parsed = JSON.parse(ls);
+                            await dbBatchSave(parsed.notes || [], parsed.tasks || [], parsed.tagOrder || []);
+                            localStorage.removeItem('tagmaster-local');
+                            
+                            notes.value = parsed.notes || [];
+                            tasks.value = parsed.tasks || [];
+                            tagOrder.value = parsed.tagOrder || [];
+                        } else {
+                            if (ls && hasIDBData) {
+                                console.warn("Found both LocalStorage and IndexedDB data. Ignoring LocalStorage to preserve newer IndexedDB data.");
+                            }
+                            
+                            notes.value = dbNotes || [];
+                            tasks.value = dbTasks || [];
+                            tagOrder.value = dbMeta ? dbMeta.value : [];
+                        }
+
+                        isReady.value = true; // Enable writes
                         
                     } catch (e) {
                         console.error("Load Failed", e);
                         dbStatus.value = "Error";
+                        // CRITICAL: Do NOT set isReady to true if load failed, preventing empty overwrites
                     }
                 };
 
                 // --- NEW SAVE DATA (Granular) ---
-                // We only save the specific item that changed, or meta
                 
                 // Save Note (Single)
                 const saveNote = async (note) => {
+                    if (!isReady.value) return; // Guard
                     dbStatus.value = "Saving...";
                     try {
                         await dbPut('notes', JSON.parse(JSON.stringify(note))); // strip proxies
@@ -436,26 +446,31 @@
 
                 // Delete Note
                 const removeNoteDB = async (id) => {
+                    if (!isReady.value) return;
                     await dbDelete('notes', id);
                 };
 
                 // Save Task (Single)
                 const saveTask = async (task) => {
+                     if (!isReady.value) return;
                      try { await dbPut('tasks', JSON.parse(JSON.stringify(task))); } catch(e){}
                 };
                 
                 // Delete Task
                 const removeTaskDB = async (id) => {
+                    if (!isReady.value) return;
                     await dbDelete('tasks', id);
                 };
 
                 // Save Meta (Tags)
                 const saveMeta = async () => {
+                    if (!isReady.value) return;
                     try { await dbPut('meta', { id: 'tag_order', value: JSON.parse(JSON.stringify(tagOrder.value)) }); } catch(e){}
                 };
 
                 // Save All (For Import/Rename)
                 const saveAll = async () => {
+                    if (!isReady.value) return;
                     dbStatus.value = "Saving All...";
                     await dbBatchSave(notes.value, tasks.value, tagOrder.value);
                     dbStatus.value = "Saved";
@@ -471,8 +486,6 @@
                 const executeImport = async () => { 
                     if (!pendingImport.value) return; 
                     const source = pendingImport.value; 
-                    // ... (Merging logic same as before, updating reactive arrays) ...
-                    // Logic omitted for brevity, identical to v8.4 but calls saveAll() at end
                      if (importScope.value.notes) { if (importMode.value === 'replace') { notes.value = source.notes || []; } else { const existingIds = new Set(notes.value.map(n => n.id)); const newNotes = (source.notes || []).filter(n => !existingIds.has(n.id)); notes.value = [...notes.value, ...newNotes]; } } 
                      if (importScope.value.tasks) { if (importMode.value === 'replace') { tasks.value = source.tasks || []; } else { const existingIds = new Set(tasks.value.map(t => t.id)); const newTasks = (source.tasks || []).filter(t => !existingIds.has(t.id)); tasks.value = [...tasks.value, ...newTasks]; } } 
                      const isFullReplace = importMode.value === 'replace' && importScope.value.notes && importScope.value.tasks; 
@@ -504,9 +517,7 @@
                 const openRenameModal = () => { renameInput.value = activeTag.value; showRenameModal.value = true; };
                 const confirmRename = () => { if (!renameInput.value.trim() || renameInput.value === activeTag.value) { showRenameModal.value = false; return; } const oldLower = activeTag.value.toLowerCase(); const newTag = renameInput.value.trim(); notes.value.forEach(note => { if (note.tags.some(t => t.toLowerCase() === oldLower)) { note.tags = note.tags.map(t => t.toLowerCase() === oldLower ? newTag : t); note.tags = [...new Set(note.tags)]; } }); tasks.value.forEach(task => { if (task.tags.some(t => t.toLowerCase() === oldLower)) { task.tags = task.tags.map(t => t.toLowerCase() === oldLower ? newTag : t); task.tags = [...new Set(task.tags)]; } }); const orderIdx = tagOrder.value.findIndex(t => t.toLowerCase() === oldLower); if (orderIdx !== -1) { tagOrder.value[orderIdx] = newTag; } activeTag.value = newTag; saveAll(); showRenameModal.value = false; };
                 
-                // NEW openEditor: Init title
                 const openEditor = (n) => { if (n) { originalNoteId.value = n.id; editingNote.value = JSON.parse(JSON.stringify(n)); } else { originalNoteId.value = null; const initialTags = activeTag.value ? [activeTag.value] : []; editingNote.value = { id: generateId(), title: '', content: '', tags: initialTags, updatedAt: Date.now() }; } tagInput.value = ''; currentImage.value = null; };
-                
                 const startBackdropClick = () => { backdropClickStarted.value = true; };
                 const confirmBackdropClick = () => { if (backdropClickStarted.value) closeEditor(); backdropClickStarted.value = false; };
                 const confirmRenameBackdropClick = () => { if (backdropClickStarted.value) { showRenameModal.value = false; } backdropClickStarted.value = false; };
@@ -539,6 +550,7 @@
                     if (tagListRef.value) { new Sortable(tagListRef.value, { animation: 150, ghostClass: 'opacity-40', onEnd: (evt) => { const items = evt.to.children; const newOrder = []; for(let i=0; i<items.length; i++) newOrder.push(items[i].getAttribute('data-id')); tagOrder.value = newOrder; saveData(); }}); }
                     setInterval(() => timeTrigger.value = Date.now(), 60000);
                     document.execCommand('defaultParagraphSeparator', false, 'div');
+                    loadData(); // Load on start
                 });
 
                 return {
@@ -553,7 +565,7 @@
                     exportData, importData, fileInput, showImportModal, pendingImport, importScope, importMode, executeImport,
                     openRenameModal, showRenameModal, renameInput, confirmRename, confirmRenameBackdropClick,
                     onTaskFocus, currentImage, resizerStyle, startResize, updateResizerPosition, dbStatus,
-                    onTitleInput // New title handler
+                    onTitleInput
                 };
             }
         });
