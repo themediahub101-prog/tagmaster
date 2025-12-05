@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="format-detection" content="telephone=no">
-    <title>TagMaster v9.3</title>
+    <title>TagMaster v9.6</title>
     
     <!-- FAVICON -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23F97316'/><path d='M30 35h40M30 55h40M30 75h25' stroke='white' stroke-width='8' stroke-linecap='round'/></svg>">
@@ -57,6 +57,9 @@
         .modal-editor blockquote { border-left: 4px solid #E0E0E0; padding-left: 1em; color: #666; font-style: italic; margin: 0.5em 0; }
         .modal-editor span[style*="background-color"] { border-radius: 4px; padding: 0 2px; }
         
+        /* NEW: Horizontal Rule Style */
+        .modal-editor hr { margin: 1.5em 0; border: 0; border-top: 1px solid #E0E0E0; }
+
         /* Image Style */
         .modal-editor img { max-width: 100%; cursor: default; }
         .resizer-overlay { pointer-events: none; }
@@ -99,7 +102,7 @@
             <div class="p-4 flex items-center justify-between font-bold select-none text-notion-text">
                 <div class="flex items-center gap-2">
                     <div class="w-6 h-6 bg-orange-500 text-white flex items-center justify-center rounded text-xs"><i class="ph-bold ph-note text-sm"></i></div>
-                    <span>TagMaster v9.3</span>
+                    <span>TagMaster v9.6</span>
                 </div>
                 <button @click="sidebarOpen = false" class="md:hidden text-notion-dim p-1"><i class="ph ph-caret-left"></i></button>
             </div>
@@ -117,7 +120,7 @@
                     <i class="ph-bold ph-database"></i> IndexedDB <span class="db-status" v-if="dbStatus">{{ dbStatus }}</span>
                 </div>
                 <div class="flex gap-2">
-                    <button @click="exportData" class="flex-1 flex items-center justify-center gap-1 bg-white border border-gray-200 rounded py-1.5 text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm"><i class="ph ph-download-simple"></i> Export</button>
+                    <button @click="exportData(false)" class="flex-1 flex items-center justify-center gap-1 bg-white border border-gray-200 rounded py-1.5 text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm"><i class="ph ph-download-simple"></i> Export</button>
                     <button @click="$refs.fileInput.click()" class="flex-1 flex items-center justify-center gap-1 bg-white border border-gray-200 rounded py-1.5 text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm"><i class="ph ph-upload-simple"></i> Import</button>
                     <input ref="fileInput" type="file" class="hidden" accept=".json" @change="importData">
                 </div>
@@ -162,15 +165,7 @@
                         <div class="flex gap-2 overflow-x-auto no-scrollbar py-2 mb-4"><button @click="setFilter(null)" class="whitespace-nowrap px-3 py-1 rounded-full text-xs border transition-colors" :class="activeTag === null ? 'bg-gray-800 text-white border-gray-800' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'">All</button><button v-for="tag in sortedTags" :key="tag" @click="setFilter(tag)" class="whitespace-nowrap px-3 py-1 rounded-full text-xs border transition-colors" :class="activeTag === tag ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:border-blue-300'">#{{ tag }}</button></div>
                         <div v-if="filteredNotes.length === 0" class="text-center py-10 bg-gray-50 rounded-lg border border-dashed border-gray-200"><p class="text-sm text-gray-400">{{ searchQuery ? 'No notes found.' : 'No notes here.' }}</p></div>
                         <div class="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4">
-                            <div v-for="note in filteredNotes" :key="note.id" @click="openEditor(note)" class="break-inside-avoid bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer transition-all hover:-translate-y-0.5 group flex flex-col relative overflow-hidden">
-                                <div class="mb-3 max-h-32 overflow-hidden relative">
-                                    <div class="font-bold text-gray-900 mb-1 text-sm truncate">{{ note.title || 'Untitled' }}</div>
-                                    <div v-if="!note.content" class="text-gray-300 italic text-xs">Empty note...</div>
-                                    <div v-else class="preview-text text-xs text-gray-600">{{ getPreviewText(note.content) }}</div>
-                                    <div class="absolute bottom-0 left-0 w-full h-6 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
-                                </div>
-                                <div class="flex items-center justify-between pt-2 border-t border-gray-50 mt-auto"><div class="flex gap-1 flex-wrap"><span v-for="tag in note.tags" :key="tag" class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">#{{ tag }}</span></div><span class="text-[10px] text-gray-300 whitespace-nowrap ml-2">{{ formatRelativeTime(note.updatedAt) }}</span></div>
-                            </div>
+                            <div v-for="note in filteredNotes" :key="note.id" @click="openEditor(note)" class="break-inside-avoid bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer transition-all hover:-translate-y-0.5 group flex flex-col relative overflow-hidden"><div class="mb-3 max-h-32 overflow-hidden relative"><div class="font-bold text-gray-900 mb-1 text-sm truncate">{{ note.title || 'Untitled' }}</div><div v-if="!note.content" class="text-gray-300 italic text-xs">Empty note...</div><div v-else class="preview-text text-xs text-gray-600">{{ getPreviewText(note.content) }}</div><div class="absolute bottom-0 left-0 w-full h-6 bg-gradient-to-t from-white to-transparent pointer-events-none"></div></div><div class="flex items-center justify-between pt-2 border-t border-gray-50 mt-auto"><div class="flex gap-1 flex-wrap"><span v-for="tag in note.tags" :key="tag" class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">#{{ tag }}</span></div><span class="text-[10px] text-gray-300 whitespace-nowrap ml-2">{{ formatRelativeTime(note.updatedAt) }}</span></div></div>
                         </div>
                     </section>
                     <div class="h-24"></div>
@@ -183,7 +178,8 @@
                     <div class="flex items-center gap-1 p-2 border-b border-gray-100 bg-gray-50 text-notion-text shrink-0 overflow-x-auto no-scrollbar relative z-20">
                         <button @click="closeEditor" class="p-2 hover:bg-gray-200 rounded mr-2 flex-shrink-0"><i class="ph ph-x text-lg"></i></button>
                         <div class="h-6 w-px bg-gray-300 mx-1 flex-shrink-0"></div>
-                        <select @change="changeFontSize" class="bg-transparent text-xs border border-gray-200 rounded px-1 py-1 mr-1 focus:outline-none hover:bg-white cursor-pointer"><option value="3">Normal</option><option value="1">Small</option><option value="5">Large</option><option value="7">Huge</option></select>
+                        <!-- REMOVED FONT SIZE SELECTOR -->
+
                         <button @click="copyFormat" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0 relative" :class="{'text-blue-600 bg-blue-50': copiedStyle}"><i class="ph ph-paint-brush"></i><span v-if="copiedStyle" class="absolute top-0 right-0 w-2 h-2 bg-blue-500 rounded-full border border-white"></span></button>
                         <button @click="pasteFormat" class="p-1.5 rounded flex-shrink-0" :class="copiedStyle ? 'hover:bg-blue-100 text-blue-700' : 'text-gray-300 cursor-not-allowed'" :disabled="!copiedStyle"><i class="ph ph-paint-roller"></i></button>
                         <div class="h-6 w-px bg-gray-300 mx-1 flex-shrink-0"></div>
@@ -192,10 +188,12 @@
                         <button @click="execCmd('underline')" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0"><i class="ph ph-text-underline"></i></button>
                         <button @click="execCmd('strikeThrough')" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0"><i class="ph ph-text-strikethrough"></i></button>
                         <div class="h-6 w-px bg-gray-300 mx-1 flex-shrink-0"></div>
-                        <button @click="execCmd('formatBlock', 'H1')" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0"><i class="ph ph-text-h-one"></i></button>
-                        <button @click="execCmd('formatBlock', 'H2')" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0"><i class="ph ph-text-h-two"></i></button>
-                        <button @click="execCmd('insertUnorderedList')" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0"><i class="ph ph-list-bullets"></i></button>
+                        <button @click="execCmd('formatBlock', 'H1')" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0" title="Heading 1"><i class="ph ph-text-h-one"></i></button>
+                        <button @click="execCmd('formatBlock', 'H2')" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0" title="Heading 2"><i class="ph ph-text-h-two"></i></button>
+                        <button @click="execCmd('formatBlock', 'div')" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0" title="Normal Text"><i class="ph ph-paragraph"></i></button>
+                        <button @click="execCmd('insertUnorderedList')" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0" title="Bullet List"><i class="ph ph-list-bullets"></i></button>
                         <button @click="execCmd('formatBlock', 'blockquote')" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0"><i class="ph ph-quotes"></i></button>
+                        <button @click="execCmd('insertHorizontalRule')" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0" title="Divider"><i class="ph ph-minus"></i></button>
                         <button @click="insertCheckbox" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0"><i class="ph ph-check-square"></i></button>
                         <div class="h-6 w-px bg-gray-300 mx-1 flex-shrink-0"></div>
                         <div class="flex gap-1 bg-white border border-gray-200 rounded p-0.5 flex-shrink-0"><button @click="execCmd('hiliteColor', '#FAEB8F')" class="p-1.5 hover:bg-yellow-100 rounded text-yellow-600"><i class="ph ph-highlighter-circle text-lg"></i></button><button @click="execCmd('hiliteColor', 'transparent')" class="p-1.5 hover:bg-gray-100 rounded text-gray-500"><i class="ph ph-eraser text-lg"></i></button></div>
@@ -204,7 +202,6 @@
                     </div>
                     <div class="px-8 pt-6 pb-2 shrink-0">
                         <div class="flex flex-wrap items-center gap-2 mb-2"><i class="ph ph-tag text-gray-400"></i><div v-for="tag in editingNote.tags" :key="tag" class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-sm flex items-center gap-1">{{ tag }} <button @click="removeTag(tag)" class="hover:text-blue-900"><i class="ph ph-x"></i></button></div><div class="relative"><input ref="tagInputRef" type="text" v-model="tagInput" @keydown.enter.prevent="addTag" @keydown.backspace="onTagBackspace" placeholder="Add tag..." class="outline-none text-sm min-w-[80px] py-1 bg-transparent placeholder-gray-300"><div v-if="tagSuggestions.length > 0" class="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 shadow-lg rounded-md z-50 py-1 max-h-40 overflow-y-auto"><div v-for="sug in tagSuggestions" :key="sug" @click="addSuggestedTag(sug)" class="px-3 py-1.5 hover:bg-gray-100 text-sm cursor-pointer text-gray-700">#{{ sug }}</div></div></div></div>
-                        <!-- TITLE INPUT -->
                         <input type="text" v-model="editingNote.title" @input="onTitleInput" class="w-full text-2xl font-bold text-gray-800 placeholder-gray-300 outline-none bg-transparent mb-2 px-1" placeholder="Note Title">
                         <div class="h-px w-full bg-gray-100 mt-1"></div>
                     </div>
@@ -242,43 +239,18 @@
     <script>
         const { createApp, ref, computed, onMounted, nextTick, reactive } = Vue;
 
-        // --- INDEXEDDB HELPER (VERSION 2 - HIGH CAPACITY) ---
+        // --- INDEXEDDB HELPER ---
         const DB_NAME = 'TagMasterDB';
-        const STORE_NAME = 'store'; // Old V1 name
-        const DB_VERSION = 2; // Bump version for migration
+        const DB_VERSION = 2;
 
         function openDB() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open(DB_NAME, DB_VERSION);
-                
                 request.onupgradeneeded = (e) => {
                     const db = e.target.result;
-                    const txn = e.target.transaction;
-
-                    // Create granular stores
                     if (!db.objectStoreNames.contains('notes')) db.createObjectStore('notes', { keyPath: 'id' });
                     if (!db.objectStoreNames.contains('tasks')) db.createObjectStore('tasks', { keyPath: 'id' });
                     if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'id' });
-
-                    // MIGRATION FROM V1 (Single Blob)
-                    if (db.objectStoreNames.contains('store')) {
-                        const oldStore = txn.objectStore('store');
-                        const getReq = oldStore.get('tagmaster-data');
-                        
-                        getReq.onsuccess = (ev) => {
-                            const oldData = ev.target.result;
-                            if (oldData) {
-                                console.log("Migrating data...", oldData);
-                                const noteStore = txn.objectStore('notes');
-                                const taskStore = txn.objectStore('tasks');
-                                const metaStore = txn.objectStore('meta');
-
-                                (oldData.notes || []).forEach(n => noteStore.put(n));
-                                (oldData.tasks || []).forEach(t => taskStore.put(t));
-                                metaStore.put({ id: 'tag_order', value: oldData.tagOrder || [] });
-                            }
-                        };
-                    }
                 };
                 request.onsuccess = () => resolve(request.result);
                 request.onerror = () => reject(request.error);
@@ -325,27 +297,21 @@
             });
         }
 
-        // Batch Save for Import/Export compatibility
         async function dbBatchSave(allNotes, allTasks, tagOrderData) {
              const db = await openDB();
              return new Promise((resolve, reject) => {
                  const txn = db.transaction(['notes', 'tasks', 'meta'], 'readwrite');
-                 
                  const noteStore = txn.objectStore('notes');
                  noteStore.clear();
                  allNotes.forEach(n => noteStore.put(n));
-                 
                  const taskStore = txn.objectStore('tasks');
                  taskStore.clear();
                  allTasks.forEach(t => taskStore.put(t));
-
                  txn.objectStore('meta').put({ id: 'tag_order', value: tagOrderData });
-
                  txn.oncomplete = () => resolve();
                  txn.onerror = () => reject(txn.error);
              });
         }
-
 
         const app = createApp({
             setup() {
@@ -355,9 +321,8 @@
                 const tagListRef = ref(null);
                 const fileInput = ref(null);
                 const dbStatus = ref('Ready');
-                const isReady = ref(false); // WRITE PROTECTION FLAG
+                const isReady = ref(false);
 
-                // Data
                 const notes = ref([]);
                 const tasks = ref([]);
                 const tagOrder = ref([]);
@@ -388,19 +353,22 @@
                 const resizerStyle = reactive({ top: '0px', left: '0px', width: '0px', height: '0px' });
                 const startX = ref(0);
                 const startWidth = ref(0);
+                
+                // --- AUTO BACKUP STATE ---
+                const lastModified = ref(0);
+                const lastBackup = ref(0);
 
-                // --- NEW LOAD DATA (Granular) ---
+                // Load Data
                 const loadData = async () => {
                     try {
-                        const [dbNotes, dbTasks, dbMeta] = await Promise.all([
+                        const [dbNotes, dbTasks, dbMeta, dbTime] = await Promise.all([
                             dbGetAll('notes'),
                             dbGetAll('tasks'),
-                            dbGet('meta', 'tag_order')
+                            dbGet('meta', 'tag_order'),
+                            dbGet('meta', 'timestamps')
                         ]);
                         
                         const hasIDBData = (dbNotes && dbNotes.length > 0) || (dbTasks && dbTasks.length > 0);
-
-                        // 2. Check for LS migration (Legacy fallback)
                         const ls = localStorage.getItem('tagmaster-local');
                         
                         if (ls && !hasIDBData) {
@@ -408,93 +376,89 @@
                             const parsed = JSON.parse(ls);
                             await dbBatchSave(parsed.notes || [], parsed.tasks || [], parsed.tagOrder || []);
                             localStorage.removeItem('tagmaster-local');
-                            
                             notes.value = parsed.notes || [];
                             tasks.value = parsed.tasks || [];
                             tagOrder.value = parsed.tagOrder || [];
                         } else {
-                            if (ls && hasIDBData) {
-                                console.warn("Found both LocalStorage and IndexedDB data. Ignoring LocalStorage to preserve newer IndexedDB data.");
-                            }
-                            
                             notes.value = dbNotes || [];
                             tasks.value = dbTasks || [];
                             tagOrder.value = dbMeta ? dbMeta.value : [];
                         }
-
-                        isReady.value = true; // Enable writes
                         
+                        // Load Timestamps
+                        if (dbTime) {
+                            lastModified.value = dbTime.lastModified || 0;
+                            lastBackup.value = dbTime.lastBackup || 0;
+                        }
+
+                        isReady.value = true;
                     } catch (e) {
                         console.error("Load Failed", e);
                         dbStatus.value = "Error";
-                        // CRITICAL: Do NOT set isReady to true if load failed, preventing empty overwrites
                     }
                 };
 
-                // --- NEW SAVE DATA (Granular) ---
-                
-                // Save Note (Single)
+                // Track Changes & Save Timestamps
+                const markAsModified = async () => {
+                    lastModified.value = Date.now();
+                    try {
+                        await dbPut('meta', { 
+                            id: 'timestamps', 
+                            lastModified: lastModified.value, 
+                            lastBackup: lastBackup.value 
+                        });
+                    } catch(e) {}
+                };
+
+                // Granular Save
                 const saveNote = async (note) => {
-                    if (!isReady.value) return; // Guard
+                    if (!isReady.value) return;
                     dbStatus.value = "Saving...";
                     try {
-                        await dbPut('notes', JSON.parse(JSON.stringify(note))); // strip proxies
+                        await dbPut('notes', JSON.parse(JSON.stringify(note)));
+                        await markAsModified(); // Mark changed
                         dbStatus.value = "Saved";
                         setTimeout(() => dbStatus.value = "Ready", 1000);
                     } catch(e) { console.error(e); dbStatus.value = "Error"; }
                 };
-
-                // Delete Note
-                const removeNoteDB = async (id) => {
-                    if (!isReady.value) return;
-                    await dbDelete('notes', id);
-                };
-
-                // Save Task (Single)
-                const saveTask = async (task) => {
-                     if (!isReady.value) return;
-                     try { await dbPut('tasks', JSON.parse(JSON.stringify(task))); } catch(e){}
-                };
-                
-                // Delete Task
-                const removeTaskDB = async (id) => {
-                    if (!isReady.value) return;
-                    await dbDelete('tasks', id);
-                };
-
-                // Save Meta (Tags)
-                const saveMeta = async () => {
-                    if (!isReady.value) return;
-                    try { await dbPut('meta', { id: 'tag_order', value: JSON.parse(JSON.stringify(tagOrder.value)) }); } catch(e){}
-                };
-
-                // Save All (For Import/Rename)
+                const removeNoteDB = async (id) => { if (!isReady.value) return; await dbDelete('notes', id); await markAsModified(); };
+                const saveTask = async (task) => { if (!isReady.value) return; try { await dbPut('tasks', JSON.parse(JSON.stringify(task))); await markAsModified(); } catch(e){} };
+                const removeTaskDB = async (id) => { if (!isReady.value) return; await dbDelete('tasks', id); await markAsModified(); };
                 const saveAll = async () => {
                     if (!isReady.value) return;
                     dbStatus.value = "Saving All...";
                     await dbBatchSave(notes.value, tasks.value, tagOrder.value);
+                    await markAsModified();
                     dbStatus.value = "Saved";
                     setTimeout(() => dbStatus.value = "Ready", 1000);
                 };
 
-
-                // --- ACTIONS MODIFIED FOR DB ---
-
-                const exportData = () => { const dataStr = JSON.stringify({ notes: notes.value, tasks: tasks.value, tagOrder: tagOrder.value, exportedAt: new Date().toISOString() }, null, 2); const blob = new Blob([dataStr], {type: "application/json"}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `tagmaster-backup-${new Date().toISOString().split('T')[0]}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); };
-                const importData = (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const json = JSON.parse(e.target.result); if (Array.isArray(json.notes) || Array.isArray(json.tasks)) { pendingImport.value = json; showImportModal.value = true; } else { alert('Invalid backup file format.'); } } catch (err) { alert('Error parsing file.'); } event.target.value = ''; }; reader.readAsText(file); };
-                
-                const executeImport = async () => { 
-                    if (!pendingImport.value) return; 
-                    const source = pendingImport.value; 
-                     if (importScope.value.notes) { if (importMode.value === 'replace') { notes.value = source.notes || []; } else { const existingIds = new Set(notes.value.map(n => n.id)); const newNotes = (source.notes || []).filter(n => !existingIds.has(n.id)); notes.value = [...notes.value, ...newNotes]; } } 
-                     if (importScope.value.tasks) { if (importMode.value === 'replace') { tasks.value = source.tasks || []; } else { const existingIds = new Set(tasks.value.map(t => t.id)); const newTasks = (source.tasks || []).filter(t => !existingIds.has(t.id)); tasks.value = [...tasks.value, ...newTasks]; } } 
-                     const isFullReplace = importMode.value === 'replace' && importScope.value.notes && importScope.value.tasks; 
-                     if (isFullReplace) { tagOrder.value = source.tagOrder || []; } else { const newTags = source.tagOrder || []; const currentTags = new Set(tagOrder.value); newTags.forEach(t => { if (!currentTags.has(t)) tagOrder.value.push(t); }); }
+                // Export (With Auto Flag)
+                const exportData = (isAuto = false) => {
+                    const dataStr = JSON.stringify({ notes: notes.value, tasks: tasks.value, tagOrder: tagOrder.value, exportedAt: new Date().toISOString() }, null, 2);
+                    const blob = new Blob([dataStr], {type: "application/json"});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    // Auto-Backup Filename differentiation
+                    const prefix = isAuto ? 'tagmaster-autobackup' : 'tagmaster-backup';
+                    a.download = `${prefix}-${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
                     
-                    await saveAll(); // Use Batch Save
-                    showImportModal.value = false; pendingImport.value = null; alert('Import successful!'); 
+                    if (isAuto) {
+                        lastBackup.value = Date.now();
+                        // Update DB with new lastBackup time
+                        dbPut('meta', { id: 'timestamps', lastModified: lastModified.value, lastBackup: lastBackup.value });
+                    }
                 };
+
+                const importData = (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const json = JSON.parse(e.target.result); if (Array.isArray(json.notes) || Array.isArray(json.tasks)) { pendingImport.value = json; showImportModal.value = true; } else { alert('Invalid backup file format.'); } } catch (err) { alert('Error parsing file.'); } event.target.value = ''; }; reader.readAsText(file); };
+                const executeImport = async () => { if (!pendingImport.value) return; const source = pendingImport.value; if (importScope.value.notes) { if (importMode.value === 'replace') { notes.value = source.notes || []; } else { const existingIds = new Set(notes.value.map(n => n.id)); const newNotes = (source.notes || []).filter(n => !existingIds.has(n.id)); notes.value = [...notes.value, ...newNotes]; } } if (importScope.value.tasks) { if (importMode.value === 'replace') { tasks.value = source.tasks || []; } else { const existingIds = new Set(tasks.value.map(t => t.id)); const newTasks = (source.tasks || []).filter(t => !existingIds.has(t.id)); tasks.value = [...tasks.value, ...newTasks]; } } const isFullReplace = importMode.value === 'replace' && importScope.value.notes && importScope.value.tasks; if (isFullReplace) { tagOrder.value = source.tagOrder || []; } else { const newTags = source.tagOrder || []; const currentTags = new Set(tagOrder.value); newTags.forEach(t => { if (!currentTags.has(t)) tagOrder.value.push(t); }); } await saveAll(); showImportModal.value = false; pendingImport.value = null; alert('Import successful!'); };
                 
+                // ... (Existing helpers unchanged) ...
                 const onTaskFocus = () => { if (activeTag.value && !newTaskInput.value.trim()) { newTaskInput.value = `#${activeTag.value} `; } };
                 const setFilter = (tag) => { const oldTagPrefix = activeTag.value ? `#${activeTag.value} ` : ''; if (newTaskInput.value === oldTagPrefix) { if (tag) { newTaskInput.value = `#${tag} `; } else { newTaskInput.value = ''; } } activeTag.value = tag; if(window.innerWidth < 768) sidebarOpen.value = false; };
                 const highlightText = (text) => { if (!searchQuery.value) return text; const regex = new RegExp(`(${searchQuery.value})`, 'gi'); return text.replace(regex, '<span class="bg-yellow-200 text-black rounded px-0.5">$1</span>'); };
@@ -517,16 +481,15 @@
                 const openRenameModal = () => { renameInput.value = activeTag.value; showRenameModal.value = true; };
                 const confirmRename = () => { if (!renameInput.value.trim() || renameInput.value === activeTag.value) { showRenameModal.value = false; return; } const oldLower = activeTag.value.toLowerCase(); const newTag = renameInput.value.trim(); notes.value.forEach(note => { if (note.tags.some(t => t.toLowerCase() === oldLower)) { note.tags = note.tags.map(t => t.toLowerCase() === oldLower ? newTag : t); note.tags = [...new Set(note.tags)]; } }); tasks.value.forEach(task => { if (task.tags.some(t => t.toLowerCase() === oldLower)) { task.tags = task.tags.map(t => t.toLowerCase() === oldLower ? newTag : t); task.tags = [...new Set(task.tags)]; } }); const orderIdx = tagOrder.value.findIndex(t => t.toLowerCase() === oldLower); if (orderIdx !== -1) { tagOrder.value[orderIdx] = newTag; } activeTag.value = newTag; saveAll(); showRenameModal.value = false; };
                 
+                // NEW: onTitleInput
+                const onTitleInput = () => { editingNote.value.updatedAt = Date.now(); saveNote(editingNote.value); };
+
                 const openEditor = (n) => { if (n) { originalNoteId.value = n.id; editingNote.value = JSON.parse(JSON.stringify(n)); } else { originalNoteId.value = null; const initialTags = activeTag.value ? [activeTag.value] : []; editingNote.value = { id: generateId(), title: '', content: '', tags: initialTags, updatedAt: Date.now() }; } tagInput.value = ''; currentImage.value = null; };
                 const startBackdropClick = () => { backdropClickStarted.value = true; };
                 const confirmBackdropClick = () => { if (backdropClickStarted.value) closeEditor(); backdropClickStarted.value = false; };
                 const confirmRenameBackdropClick = () => { if (backdropClickStarted.value) { showRenameModal.value = false; } backdropClickStarted.value = false; };
                 const closeEditor = () => { if (!editingNote.value) return; if (originalNoteId.value) { const idx = notes.value.findIndex(n => n.id === originalNoteId.value); if (idx !== -1) notes.value[idx] = editingNote.value; } else { if (editingNote.value.content.trim() || editingNote.value.title.trim() || editingNote.value.tags.length > 0) notes.value.unshift(editingNote.value); } saveNote(editingNote.value); editingNote.value = null; currentImage.value = null; };
                 const onEditorInput = (e) => { editingNote.value.content = e.target.innerHTML; editingNote.value.updatedAt = Date.now(); if (currentImage.value && !document.contains(currentImage.value)) { currentImage.value = null; } saveNote(editingNote.value); };
-                
-                // NEW: onTitleInput
-                const onTitleInput = () => { editingNote.value.updatedAt = Date.now(); saveNote(editingNote.value); };
-
                 const deleteCurrentNote = () => { if (confirm('Delete?')) { if (originalNoteId.value) { notes.value = notes.value.filter(n => n.id !== originalNoteId.value); removeNoteDB(originalNoteId.value); } editingNote.value = null; }};
                 const execCmd = (c, v = null) => { document.execCommand(c, false, v); };
                 const changeFontSize = (e) => { execCmd('fontSize', e.target.value); };
@@ -549,8 +512,20 @@
                 onMounted(() => {
                     if (tagListRef.value) { new Sortable(tagListRef.value, { animation: 150, ghostClass: 'opacity-40', onEnd: (evt) => { const items = evt.to.children; const newOrder = []; for(let i=0; i<items.length; i++) newOrder.push(items[i].getAttribute('data-id')); tagOrder.value = newOrder; saveData(); }}); }
                     setInterval(() => timeTrigger.value = Date.now(), 60000);
+                    // CHECK AUTO BACKUP EVERY MINUTE
+                    setInterval(() => {
+                        const now = new Date();
+                        // Use local time 23:59
+                        if (now.getHours() === 23 && now.getMinutes() === 59) {
+                            if (lastModified.value > lastBackup.value) {
+                                console.log("Triggering Auto Backup...");
+                                exportData(true); // true = auto
+                            }
+                        }
+                    }, 60000); // check every 60s
+                    
                     document.execCommand('defaultParagraphSeparator', false, 'div');
-                    loadData(); // Load on start
+                    loadData();
                 });
 
                 return {
