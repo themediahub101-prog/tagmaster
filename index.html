@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="format-detection" content="telephone=no">
-    <title>TagMaster Local v9.9</title>
+    <title>TagMaster v9.10</title>
     
     <!-- FAVICON -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23F97316'/><path d='M30 35h40M30 55h40M30 75h25' stroke='white' stroke-width='8' stroke-linecap='round'/></svg>">
@@ -88,7 +88,8 @@
             opacity: 1 !important; background-color: white; min-height: 36px; padding-top: 6px; padding-bottom: 6px;
         }
 
-        .db-status { font-size: 10px; margin-left: 6px; padding: 2px 6px; border-radius: 4px; background: #E0E7FF; color: #3730A3; }
+        .db-status { font-size: 10px; margin-left: 6px; padding: 2px 6px; border-radius: 4px; background: #E0E7FF; color: #3730A3; transition: all 0.3s; }
+        .db-status.error { background: #FEE2E2; color: #991B1B; }
     </style>
 </head>
 <body class="bg-notion-bg text-notion-text h-screen overflow-hidden flex">
@@ -100,7 +101,7 @@
             <div class="p-4 flex items-center justify-between font-bold select-none text-notion-text">
                 <div class="flex items-center gap-2">
                     <div class="w-6 h-6 bg-orange-500 text-white flex items-center justify-center rounded text-xs"><i class="ph-bold ph-note text-sm"></i></div>
-                    <span>TagMaster v9.9</span>
+                    <span>TagMaster v9.10</span>
                 </div>
                 <button @click="sidebarOpen = false" class="md:hidden text-notion-dim p-1"><i class="ph ph-caret-left"></i></button>
             </div>
@@ -108,8 +109,6 @@
                 <div class="text-xs font-semibold text-notion-dim uppercase tracking-wider px-2 mb-2 mt-2">Library</div>
                 <div @click="setFilter(null)" class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm cursor-pointer transition-colors mb-4" :class="activeTag === null ? 'bg-gray-200 font-medium' : 'hover:bg-notion-hover'"><i class="ph ph-list text-lg"></i> All Items</div>
                 <div class="text-xs font-semibold text-notion-dim uppercase tracking-wider px-2 mb-2 flex justify-between items-center"><span>Hashtags</span><i class="ph ph-arrows-down-up text-xs" title="Drag to reorder"></i></div>
-                
-                <!-- FIX: Added :key with sortVersion to force re-render on drop -->
                 <div ref="tagListRef" class="space-y-0.5">
                     <div v-for="tag in sortedTags" 
                          :key="tag + '-' + sortVersion" 
@@ -121,12 +120,12 @@
                         <span class="flex-1">{{ tag }}</span>
                     </div>
                 </div>
-                
                 <div v-if="sortedTags.length === 0" class="px-3 text-xs text-notion-dim italic mt-2">Tags appear here.</div>
             </div>
             <div class="p-3 border-t border-gray-200 bg-gray-50/50">
                 <div class="flex items-center gap-1.5 text-[10px] text-gray-400 mb-2 px-1">
-                    <i class="ph-bold ph-database"></i> IndexedDB <span class="db-status" v-if="dbStatus">{{ dbStatus }}</span>
+                    <i class="ph-bold ph-database"></i> IndexedDB 
+                    <span class="db-status" :class="{'error': dbStatus === 'Error'}" v-if="dbStatus">{{ dbStatus }}</span>
                 </div>
                 <div class="flex gap-2">
                     <button @click="exportData(false)" class="flex-1 flex items-center justify-center gap-1 bg-white border border-gray-200 rounded py-1.5 text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm"><i class="ph ph-download-simple"></i> Export</button>
@@ -187,8 +186,6 @@
                     <div class="flex items-center gap-1 p-2 border-b border-gray-100 bg-gray-50 text-notion-text shrink-0 overflow-x-auto no-scrollbar relative z-20">
                         <button @click="closeEditor" class="p-2 hover:bg-gray-200 rounded mr-2 flex-shrink-0"><i class="ph ph-x text-lg"></i></button>
                         <div class="h-6 w-px bg-gray-300 mx-1 flex-shrink-0"></div>
-                        <!-- REMOVED FONT SIZE SELECTOR -->
-
                         <button @click="copyFormat" class="p-1.5 hover:bg-gray-200 rounded flex-shrink-0 relative" :class="{'text-blue-600 bg-blue-50': copiedStyle}"><i class="ph ph-paint-brush"></i><span v-if="copiedStyle" class="absolute top-0 right-0 w-2 h-2 bg-blue-500 rounded-full border border-white"></span></button>
                         <button @click="pasteFormat" class="p-1.5 rounded flex-shrink-0" :class="copiedStyle ? 'hover:bg-blue-100 text-blue-700' : 'text-gray-300 cursor-not-allowed'" :disabled="!copiedStyle"><i class="ph ph-paint-roller"></i></button>
                         <div class="h-6 w-px bg-gray-300 mx-1 flex-shrink-0"></div>
@@ -248,7 +245,7 @@
     <script>
         const { createApp, ref, computed, onMounted, nextTick, reactive } = Vue;
 
-        // --- INDEXEDDB HELPER ---
+        // --- INDEXEDDB HELPER (VERSION 2 - HIGH CAPACITY) ---
         const DB_NAME = 'TagMasterDB';
         const DB_VERSION = 2;
 
@@ -310,15 +307,22 @@
              const db = await openDB();
              return new Promise((resolve, reject) => {
                  const txn = db.transaction(['notes', 'tasks', 'meta'], 'readwrite');
+                 
+                 txn.onerror = (e) => reject(e.target.error);
+                 txn.onabort = (e) => reject(new Error("Txn aborted"));
+
                  const noteStore = txn.objectStore('notes');
                  noteStore.clear();
-                 allNotes.forEach(n => noteStore.put(n));
+                 // Deep clone to remove proxies before saving
+                 allNotes.forEach(n => noteStore.put(JSON.parse(JSON.stringify(n))));
+                 
                  const taskStore = txn.objectStore('tasks');
                  taskStore.clear();
-                 allTasks.forEach(t => taskStore.put(t));
-                 txn.objectStore('meta').put({ id: 'tag_order', value: tagOrderData });
+                 allTasks.forEach(t => taskStore.put(JSON.parse(JSON.stringify(t))));
+
+                 txn.objectStore('meta').put({ id: 'tag_order', value: JSON.parse(JSON.stringify(tagOrderData)) });
+
                  txn.oncomplete = () => resolve();
-                 txn.onerror = () => reject(txn.error);
              });
         }
 
@@ -431,13 +435,32 @@
                 const removeNoteDB = async (id) => { if (!isReady.value) return; await dbDelete('notes', id); await markAsModified(); };
                 const saveTask = async (task) => { if (!isReady.value) return; try { await dbPut('tasks', JSON.parse(JSON.stringify(task))); await markAsModified(); } catch(e){} };
                 const removeTaskDB = async (id) => { if (!isReady.value) return; await dbDelete('tasks', id); await markAsModified(); };
-                const saveAll = async () => {
+                
+                // FIXED: Debounced Save All for Drag & Drop
+                let saveAllTimeout;
+                const saveAll = () => {
                     if (!isReady.value) return;
                     dbStatus.value = "Saving All...";
-                    await dbBatchSave(notes.value, tasks.value, tagOrder.value);
-                    await markAsModified();
-                    dbStatus.value = "Saved";
-                    setTimeout(() => dbStatus.value = "Ready", 1000);
+                    
+                    clearTimeout(saveAllTimeout);
+                    saveAllTimeout = setTimeout(async () => {
+                        try {
+                            // Deep clone before saving to avoid Proxy issues in IndexedDB
+                            await dbBatchSave(
+                                JSON.parse(JSON.stringify(notes.value)), 
+                                JSON.parse(JSON.stringify(tasks.value)), 
+                                JSON.parse(JSON.stringify(tagOrder.value))
+                            );
+                            await markAsModified();
+                            dbStatus.value = "Saved";
+                            setTimeout(() => dbStatus.value = "Ready", 1000);
+                        } catch (e) {
+                            console.error("Save All Failed", e);
+                            dbStatus.value = "Error";
+                            // Auto-reset status after error so user isn't stuck
+                            setTimeout(() => dbStatus.value = "Ready", 3000);
+                        }
+                    }, 500); // 500ms debounce
                 };
 
                 const exportData = (isAuto = false) => {
@@ -460,7 +483,7 @@
                 };
 
                 const importData = (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const json = JSON.parse(e.target.result); if (Array.isArray(json.notes) || Array.isArray(json.tasks)) { pendingImport.value = json; showImportModal.value = true; } else { alert('Invalid backup file format.'); } } catch (err) { alert('Error parsing file.'); } event.target.value = ''; }; reader.readAsText(file); };
-                const executeImport = async () => { if (!pendingImport.value) return; const source = pendingImport.value; if (importScope.value.notes) { if (importMode.value === 'replace') { notes.value = source.notes || []; } else { const existingIds = new Set(notes.value.map(n => n.id)); const newNotes = (source.notes || []).filter(n => !existingIds.has(n.id)); notes.value = [...notes.value, ...newNotes]; } } if (importScope.value.tasks) { if (importMode.value === 'replace') { tasks.value = source.tasks || []; } else { const existingIds = new Set(tasks.value.map(t => t.id)); const newTasks = (source.tasks || []).filter(t => !existingIds.has(t.id)); tasks.value = [...tasks.value, ...newTasks]; } } const isFullReplace = importMode.value === 'replace' && importScope.value.notes && importScope.value.tasks; if (isFullReplace) { tagOrder.value = source.tagOrder || []; } else { const newTags = source.tagOrder || []; const currentTags = new Set(tagOrder.value); newTags.forEach(t => { if (!currentTags.has(t)) tagOrder.value.push(t); }); } await saveAll(); showImportModal.value = false; pendingImport.value = null; alert('Import successful!'); };
+                const executeImport = async () => { if (!pendingImport.value) return; const source = pendingImport.value; if (importScope.value.notes) { if (importMode.value === 'replace') { notes.value = source.notes || []; } else { const existingIds = new Set(notes.value.map(n => n.id)); const newNotes = (source.notes || []).filter(n => !existingIds.has(n.id)); notes.value = [...notes.value, ...newNotes]; } } if (importScope.value.tasks) { if (importMode.value === 'replace') { tasks.value = source.tasks || []; } else { const existingIds = new Set(tasks.value.map(t => t.id)); const newTasks = (source.tasks || []).filter(t => !existingIds.has(t.id)); tasks.value = [...tasks.value, ...newTasks]; } } const isFullReplace = importMode.value === 'replace' && importScope.value.notes && importScope.value.tasks; if (isFullReplace) { tagOrder.value = source.tagOrder || []; } else { const newTags = source.tagOrder || []; const currentTags = new Set(tagOrder.value); newTags.forEach(t => { if (!currentTags.has(t)) tagOrder.value.push(t); }); } saveAll(); showImportModal.value = false; pendingImport.value = null; alert('Import successful!'); };
                 
                 const onTaskFocus = () => { if (activeTag.value && !newTaskInput.value.trim()) { newTaskInput.value = `#${activeTag.value} `; } };
                 const setFilter = (tag) => { const oldTagPrefix = activeTag.value ? `#${activeTag.value} ` : ''; if (newTaskInput.value === oldTagPrefix) { if (tag) { newTaskInput.value = `#${tag} `; } else { newTaskInput.value = ''; } } activeTag.value = tag; if(window.innerWidth < 768) sidebarOpen.value = false; };
@@ -479,10 +502,45 @@
                 const toggleTask = (t) => { t.completed = !t.completed; saveTask(t); };
                 const deleteTask = (id) => { tasks.value = tasks.value.filter(t => t.id !== id); removeTaskDB(id); };
                 const sortedTags = computed(() => { const rawTags = []; const canonicalMap = new Map(); tagOrder.value.forEach(t => { if (!canonicalMap.has(t.toLowerCase())) canonicalMap.set(t.toLowerCase(), t); }); const scan = (list) => { list.forEach(item => { item.tags.forEach(t => { if (!canonicalMap.has(t.toLowerCase())) canonicalMap.set(t.toLowerCase(), t); }); }); }; scan(notes.value); scan(tasks.value); const result = Array.from(canonicalMap.values()); const orderMap = new Map(); tagOrder.value.forEach((t, i) => orderMap.set(t.toLowerCase(), i)); return result.sort((a, b) => { const iA = orderMap.has(a.toLowerCase()) ? orderMap.get(a.toLowerCase()) : 9999; const iB = orderMap.has(b.toLowerCase()) ? orderMap.get(b.toLowerCase()) : 9999; return iA !== iB ? iA - iB : a.localeCompare(b); }); });
-                const filteredTasks = computed(() => { let res = tasks.value; if (activeTag.value) { const filterLower = activeTag.value.toLowerCase(); res = res.filter(task => task.tags.some(t => t.toLowerCase() === filterLower)); } if (searchQuery.value) res = res.filter(task => task.title.toLowerCase().includes(searchQuery.value.toLowerCase())); return res.sort((a, b) => { if (a.completed !== b.completed) return a.completed ? 1 : -1; const dateA = new Date(a.dueDate).getTime(); const dateB = new Date(b.dueDate).getTime(); return dateA - dateB; }); });
+                
+                // === UPDATED TASK FILTERING LOGIC (Overview vs Tag View) ===
+                const filteredTasks = computed(() => { 
+                    let res = tasks.value; 
+                    
+                    if (searchQuery.value) {
+                         res = res.filter(task => task.title.toLowerCase().includes(searchQuery.value.toLowerCase())); 
+                    }
+
+                    if (activeTag.value) { 
+                        // Tag View: Show ALL matching tasks (Completed & Uncompleted)
+                        const filterLower = activeTag.value.toLowerCase(); 
+                        res = res.filter(task => task.tags.some(t => t.toLowerCase() === filterLower)); 
+                    } else {
+                        // Dashboard Overview:
+                        // 1. Show ALL uncompleted tasks
+                        // 2. Show completed tasks ONLY if they have NO tags (orphaned)
+                        res = res.filter(task => !task.completed || task.tags.length === 0);
+                    }
+
+                    return res.sort((a, b) => { 
+                        if (a.completed !== b.completed) return a.completed ? 1 : -1; 
+                        const dateA = new Date(a.dueDate).getTime(); 
+                        const dateB = new Date(b.dueDate).getTime(); 
+                        return dateA - dateB; 
+                    }); 
+                });
+
                 const filteredNotes = computed(() => { let res = notes.value; if (activeTag.value) { const filterLower = activeTag.value.toLowerCase(); res = res.filter(n => n.tags.some(t => t.toLowerCase() === filterLower)); } if (searchQuery.value) { const q = searchQuery.value.toLowerCase(); res = res.filter(n => getPreviewText(n.content).toLowerCase().includes(q) || n.tags.some(t => t.toLowerCase().includes(q))); } return res; });
                 const openRenameModal = () => { renameInput.value = activeTag.value; showRenameModal.value = true; };
-                const confirmRename = () => { if (!renameInput.value.trim() || renameInput.value === activeTag.value) { showRenameModal.value = false; return; } const oldLower = activeTag.value.toLowerCase(); const newTag = renameInput.value.trim(); notes.value.forEach(note => { if (note.tags.some(t => t.toLowerCase() === oldLower)) { note.tags = note.tags.map(t => t.toLowerCase() === oldLower ? newTag : t); note.tags = [...new Set(note.tags)]; } }); tasks.value.forEach(task => { if (task.tags.some(t => t.toLowerCase() === oldLower)) { task.tags = task.tags.map(t => t.toLowerCase() === oldLower ? newTag : t); task.tags = [...new Set(task.tags)]; } }); const orderIdx = tagOrder.value.findIndex(t => t.toLowerCase() === oldLower); if (orderIdx !== -1) { tagOrder.value[orderIdx] = newTag; } activeTag.value = newTag; saveAll(); showRenameModal.value = false; };
+                const confirmRename = () => { 
+                    if (!renameInput.value.trim() || renameInput.value === activeTag.value) { showRenameModal.value = false; return; } 
+                    const oldLower = activeTag.value.toLowerCase(); const newTag = renameInput.value.trim(); 
+                    notes.value.forEach(note => { if (note.tags.some(t => t.toLowerCase() === oldLower)) { note.tags = note.tags.map(t => t.toLowerCase() === oldLower ? newTag : t); note.tags = [...new Set(note.tags)]; } }); 
+                    tasks.value.forEach(task => { if (task.tags.some(t => t.toLowerCase() === oldLower)) { task.tags = task.tags.map(t => t.toLowerCase() === oldLower ? newTag : t); task.tags = [...new Set(task.tags)]; } }); 
+                    const orderIdx = tagOrder.value.findIndex(t => t.toLowerCase() === oldLower); if (orderIdx !== -1) { tagOrder.value[orderIdx] = newTag; } activeTag.value = newTag; 
+                    saveAll(); // Trigger debounced batch save
+                    showRenameModal.value = false; 
+                };
                 
                 const onTitleInput = () => { editingNote.value.updatedAt = Date.now(); saveNote(editingNote.value); };
 
@@ -494,7 +552,7 @@
                 const onEditorInput = (e) => { editingNote.value.content = e.target.innerHTML; editingNote.value.updatedAt = Date.now(); if (currentImage.value && !document.contains(currentImage.value)) { currentImage.value = null; } saveNote(editingNote.value); };
                 const deleteCurrentNote = () => { if (confirm('Delete?')) { if (originalNoteId.value) { notes.value = notes.value.filter(n => n.id !== originalNoteId.value); removeNoteDB(originalNoteId.value); } editingNote.value = null; }};
                 const execCmd = (c, v = null) => { document.execCommand(c, false, v); };
-                const changeFontSize = (e) => { execCmd('fontSize', e.target.value); };
+                // REMOVED: changeFontSize
                 const insertCheckbox = () => { const sel = window.getSelection(); if (!sel.rangeCount) return; const range = sel.getRangeAt(0); if (sel.isCollapsed) { document.execCommand('insertHTML', false, '<input type="checkbox">&nbsp;'); } else { const frag = range.extractContents(); const tempDiv = document.createElement('div'); tempDiv.appendChild(frag); let html = tempDiv.innerHTML; if (html.includes('<div') || html.includes('<p')) { html = html.replace(/<(div|p)([^>]*)>/gi, '<$1$2><input type="checkbox">&nbsp;'); } else { html = `<div><input type="checkbox">&nbsp;${html}</div>`; } document.execCommand('insertHTML', false, html); } onEditorInput({ target: editorRef.value }); };
                 const handleEditorClick = (e) => { if (e.target.tagName === 'INPUT' && e.target.type === 'checkbox') { if (e.target.hasAttribute('checked')) { e.target.removeAttribute('checked'); } else { e.target.setAttribute('checked', 'checked'); } onEditorInput({ target: editorRef.value }); return; } if (e.target.tagName === 'IMG') { currentImage.value = e.target; updateResizerPosition(); const range = document.createRange(); range.selectNode(e.target); const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range); } else { currentImage.value = null; } };
                 const handleEditorKeydown = (e) => { if ((e.key === 'Backspace' || e.key === 'Delete') && currentImage.value) { e.preventDefault(); currentImage.value.remove(); currentImage.value = null; onEditorInput({ target: editorRef.value }); return; } if (e.key === 'Enter' && !e.shiftKey) { const sel = window.getSelection(); if (!sel.rangeCount) return; let currentNode = sel.anchorNode; if (currentNode.nodeType === 3) currentNode = currentNode.parentNode; let block = currentNode; while (block && block.parentNode !== editorRef.value && block !== editorRef.value) { block = block.parentNode; } if (!block || block === editorRef.value) return; const checkbox = block.querySelector('input[type="checkbox"]'); if (checkbox) { const clone = block.cloneNode(true); const cloneCb = clone.querySelector('input[type="checkbox"]'); if (cloneCb) cloneCb.remove(); const text = clone.textContent.replace(/[\s\u00A0]/g, ''); if (text === '') { e.preventDefault(); checkbox.remove(); onEditorInput({ target: editorRef.value }); } else { setTimeout(() => { document.execCommand('insertHTML', false, '<input type="checkbox">&nbsp;'); onEditorInput({ target: editorRef.value }); }, 0); } } } };
@@ -550,7 +608,7 @@
                     editingId, editTitle, editDue, editTagsString, startEdit, saveEdit, cancelEdit,
                     filteredTasks, filteredNotes, formatDateTime, formatRelativeTime, getPreviewText,
                     editingNote, openEditor, closeEditor, onEditorInput, deleteCurrentNote, editorRef, 
-                    execCmd, changeFontSize, insertCheckbox, handleEditorClick, handleEditorKeydown, wordCount,
+                    execCmd, insertCheckbox, handleEditorClick, handleEditorKeydown, wordCount,
                     copyFormat, pasteFormat, copiedStyle, startBackdropClick, confirmBackdropClick,
                     tagInput, tagSuggestions, addTag, addSuggestedTag, removeTag, onTagBackspace, tagInputRef,
                     exportData, importData, fileInput, showImportModal, pendingImport, importScope, importMode, executeImport,
